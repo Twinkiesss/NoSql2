@@ -31,7 +31,7 @@ public class CouchDbRelatedObjectRepository {
                 Map.of("createdAt", "asc"), 10000, 0, null);
         List<RelatedObject> objects = new ArrayList<>();
         result.path("docs").forEach(n -> {
-            var copy = n.deepCopy();
+            com.fasterxml.jackson.databind.node.ObjectNode copy = (com.fasterxml.jackson.databind.node.ObjectNode) n.deepCopy();
             copy.remove("_id");
             copy.remove("_rev");
             objects.add(couch.mapper().convertValue(copy, RelatedObject.class));

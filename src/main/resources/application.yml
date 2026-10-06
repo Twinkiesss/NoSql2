@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/library
+    url: jdbc:postgresql://localhost:5433/library
     username: library
     password: library
   jpa:

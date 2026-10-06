@@ -18,6 +18,7 @@ public class Event {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private int schemaVersion;
+    private Long version;
     private LastChange lastChange;
     private List<StateHistoryEntry> stateHistory = new ArrayList<>();
     @JsonIgnore
@@ -29,6 +30,7 @@ public class Event {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.schemaVersion = 2;
+        this.version = 1L;
         this.type = "book";
     }
 
@@ -72,6 +74,8 @@ public class Event {
     }
     public String getRev() { return rev; }
     public void setRev(String rev) { this.rev = rev; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public record LastChange(String action, String userId, LocalDateTime changedAt) {}
     public record StateHistoryEntry(String state, String action, String userId, LocalDateTime changedAt) {}

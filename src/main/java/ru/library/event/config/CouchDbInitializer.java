@@ -110,4 +110,4 @@ public class CouchDbInitializer implements CommandLineRunner {
             log.debug("Mango index already exists: {}", e.getMessage());
         }
     }
-}\n
+}

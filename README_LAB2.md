@@ -35,7 +35,7 @@ java -jar target/library-events-service-2.0.0.jar
 
 Приложение: `http://localhost:8081`
 
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5433`
 - Etcd: `localhost:2379`
 - CouchDB 1: `http://localhost:5984`
 - CouchDB 2: `http://localhost:5985`
