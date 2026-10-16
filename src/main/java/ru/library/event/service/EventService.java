@@ -58,10 +58,6 @@ public class EventService {
         return saved;
     }
 
-    public Optional<Event> getEvent(String id) {
-        return getEvent(id, "system");
-    }
-
     public Optional<Event> getEvent(String id, String userId) {
         Event event = repository.findById(id);
         if (event != null) {
@@ -75,9 +71,12 @@ public class EventService {
         return repository.findAll();
     }
 
-    public Event updateEvent(Event input) {
-        return updateEvent(input, "system");
+    public Optional<Event> getEvent(String id) {
+        return getEvent(id, "system");
     }
+
+
+
 
     public Event updateEvent(Event input, String userId) {
         for (int attempt = 0; attempt < 5; attempt++) {
@@ -109,9 +108,10 @@ public class EventService {
         throw new IllegalStateException("Не удалось обновить документ из-за конфликта ревизий: " + input.getId());
     }
 
-    public void deleteEvent(String id) {
-        deleteEvent(id, "system");
+    public Event updateEvent(Event input) {
+        return updateEvent(input, "system");
     }
+
 
     public void deleteEvent(String id, String userId) {
         Event event = repository.findById(id);
@@ -126,6 +126,11 @@ public class EventService {
         }
         actionService.log(userId, "DELETE", id);
         queryCache.invalidate();
+    }
+
+
+    public void deleteEvent(String id) {
+        deleteEvent(id, "system");
     }
 
     public long incrementViewCount(String eventId) {
@@ -214,6 +219,14 @@ public class EventService {
         return repository.explain(type, from, to);
     }
 
+    public void replicate() {
+        couch.post("/_replicate", java.util.Map.of(
+                "source", couch.database(),
+                "target", "http://admin:admin@couchdb2:5984/" + couch.database(),
+                "continuous", true
+        ));
+    }
+
     public int migrate() {
         int result = migrationService.migrate();
         queryCache.invalidate();
@@ -224,13 +237,6 @@ public class EventService {
         return couch.get("/" + couch.database() + "/_design/analytics/_view/user_actions?group=true");
     }
 
-    public void replicate() {
-        couch.post("/_replicate", java.util.Map.of(
-                "source", couch.database(),
-                "target", "http://admin:admin@couchdb2:5984/" + couch.database(),
-                "continuous", true
-        ));
-    }
 
     public List<Event> relatedSearch(String nestedState) {
         return repository.search(null, null, null, nestedState, "updatedAt", false, 0, 100);
