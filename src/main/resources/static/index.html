@@ -96,6 +96,11 @@
         .settings-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
         .settings-label { font-weight: 600; color: var(--label); }
         .settings-value { color: var(--text); }
+        .settings-form { padding: 16px 20px; background: var(--form-bg); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+        .settings-form .form-group { max-width: 360px; }
+        .settings-form .form-group input { width: 100%; }
+        .form-actions { display: flex; align-items: center; gap: 12px; }
+        .danger-text { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
         [hidden] { display: none !important; }
         .auth-screen { position: fixed; inset: 0; z-index: 1000; background: rgba(44,62,80,.96); display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card { width: 100%; max-width: 380px; background: var(--card-bg); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.3); padding: 24px; }
@@ -288,6 +293,40 @@
                     <div class="settings-row">
                         <span class="settings-label">User ID:</span>
                         <span id="set-user" class="settings-value"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2>Смена пароля</h2>
+                </div>
+                <form id="password-form" class="settings-form" onsubmit="return changePassword(event)">
+                    <div class="form-group">
+                        <label for="pwd-current">Текущий пароль</label>
+                        <input id="pwd-current" type="password" required minlength="6" maxlength="72" autocomplete="current-password" />
+                    </div>
+                    <div class="form-group">
+                        <label for="pwd-new">Новый пароль</label>
+                        <input id="pwd-new" type="password" required minlength="6" maxlength="72" autocomplete="new-password" />
+                    </div>
+                    <div class="form-group">
+                        <label for="pwd-confirm">Повторите новый пароль</label>
+                        <input id="pwd-confirm" type="password" required minlength="6" maxlength="72" autocomplete="new-password" />
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Сменить пароль</button>
+                        <span id="pwd-message" class="form-message"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2>Удаление аккаунта</h2>
+                </div>
+                <div class="settings-info">
+                    <p class="danger-text">Будут удалены аккаунт и настройки. История заказов и заявок сохранится.</p>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-danger" onclick="deleteAccount()">Удалить аккаунт</button>
                     </div>
                 </div>
             </div>
@@ -787,6 +826,52 @@
 
         // --- SETTINGS ---
         // Тема переключается кнопкой в шапке (toggleTheme).
+
+        function setPwdMessage(text, kind) {
+            const el = document.getElementById('pwd-message');
+            el.textContent = text;
+            el.classList.remove('error', 'success');
+            if (kind) el.classList.add(kind);
+        }
+
+        async function changePassword(event) {
+            event.preventDefault();
+            const current = document.getElementById('pwd-current').value;
+            const next = document.getElementById('pwd-new').value;
+            const confirmation = document.getElementById('pwd-confirm').value;
+            if (next !== confirmation) {
+                setPwdMessage('Новые пароли не совпадают', 'error');
+                return false;
+            }
+            if (next === current) {
+                setPwdMessage('Новый пароль должен отличаться от текущего', 'error');
+                return false;
+            }
+            try {
+                await api('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword: current, newPassword: next })
+                });
+                sessionStorage.setItem('auth', basicToken(currentUser.userId, next));
+                document.getElementById('password-form').reset();
+                setPwdMessage('Пароль успешно изменён', 'success');
+            } catch (error) {
+                setPwdMessage(error.message || 'Не удалось сменить пароль', 'error');
+            }
+            return false;
+        }
+
+        async function deleteAccount() {
+            if (!confirm('Удалить аккаунт? Это действие необратимо.')) return;
+            if (!confirm('Точно удалить? Аккаунт и настройки будут удалены безвозвратно.')) return;
+            try {
+                await api('/api/auth/account', { method: 'DELETE' });
+                showAuth();
+            } catch (error) {
+                alert('Не удалось удалить аккаунт: ' + (error.message || error));
+            }
+        }
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 

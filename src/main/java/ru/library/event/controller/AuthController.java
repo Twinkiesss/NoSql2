@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ru.library.event.model.AuthRequest;
 import ru.library.event.model.AuthResponse;
+import ru.library.event.model.ChangePasswordRequest;
 import ru.library.event.service.AuthService;
 
 @RestController
@@ -37,5 +39,18 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(Authentication authentication) {
         return ResponseEntity.ok(new AuthResponse(authentication.getName()));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                               Authentication authentication) {
+        authService.changePassword(authentication.getName(), request);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/account")
+    public ResponseEntity<Void> deleteAccount(Authentication authentication) {
+        authService.deleteAccount(authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

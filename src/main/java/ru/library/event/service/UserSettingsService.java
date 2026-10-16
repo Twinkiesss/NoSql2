@@ -58,7 +58,9 @@ public class UserSettingsService {
 
     @CacheEvict(value = "userSettings", key = "#userId")
     public void deleteSettings(String userId) {
-        settingsRepository.deleteById(userId);
+        if (settingsRepository.existsById(userId)) {
+            settingsRepository.deleteById(userId);
+        }
         evict("userThemes", userId);
     }
 
