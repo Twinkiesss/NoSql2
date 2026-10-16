@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Библиотека — Сервис заявок</title>
+    <title>Сервис заявок</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -47,6 +47,8 @@
         .user-actions { display: flex; align-items: center; gap: 12px; font-size: 13px; }
         .user-actions button { background: #465867; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
         .user-actions button:hover { background: #566a7b; }
+        .user-actions .logout-btn { background: #c0392b; }
+        .user-actions .logout-btn:hover { background: #e74c3c; }
         nav { display: flex; gap: 4px; background: #34495e; padding: 0 max(24px, calc((100% - 1068px) / 2)); }
         nav button { background: none; border: none; color: #95a5a6; padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent; transition: all .15s; }
         nav button:hover { color: #ecf0f1; }
@@ -90,6 +92,10 @@
         .form-message.success { color: #27ae60; }
         .view-btn { cursor: pointer; color: #3498db; font-weight: 600; }
         .view-btn:hover { text-decoration: underline; }
+        .settings-info { padding: 16px 20px; background: var(--form-bg); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+        .settings-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .settings-label { font-weight: 600; color: var(--label); }
+        .settings-value { color: var(--text); }
         [hidden] { display: none !important; }
         .auth-screen { position: fixed; inset: 0; z-index: 1000; background: rgba(44,62,80,.96); display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card { width: 100%; max-width: 380px; background: var(--card-bg); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.3); padding: 24px; }
@@ -108,7 +114,7 @@
 <body>
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
-            <h2>Библиотека — Вход</h2>
+            <h2>Вход</h2>
             <div class="auth-tabs">
                 <button id="login-tab" class="active" type="button" onclick="setAuthMode('login')">Вход</button>
                 <button id="register-tab" type="button" onclick="setAuthMode('register')">Регистрация</button>
@@ -134,11 +140,11 @@
     </div>
     <header>
         <div class="header-content">
-            <h1>Библиотека — Сервис заявок</h1>
+            <h1>Сервис заявок</h1>
             <div id="user-actions" class="user-actions" hidden>
                 <span id="current-user"></span>
                 <button id="theme-toggle" type="button" onclick="toggleTheme()">Тёмная тема</button>
-                <button type="button" onclick="logout()">Выйти</button>
+                <button type="button" class="logout-btn" onclick="logout()">Выйти</button>
             </div>
         </div>
     </header>
@@ -278,41 +284,11 @@
                 <div class="card-header">
                     <h2>Настройки пользователя</h2>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>User ID</label>
-                        <input id="set-user" class="input-readonly" readonly />
+                <div class="settings-info">
+                    <div class="settings-row">
+                        <span class="settings-label">User ID:</span>
+                        <span id="set-user" class="settings-value"></span>
                     </div>
-                    <button class="btn btn-primary" onclick="loadSettings()">Загрузить</button>
-                </div>
-                <div class="form-row" id="settings-fields" style="display:none;">
-                    <div class="form-group">
-                        <label>Категория</label>
-                        <input id="set-cat" />
-                    </div>
-                    <div class="form-group">
-                        <label>Язык</label>
-                        <input id="set-lang" />
-                    </div>
-                    <div class="form-group">
-                        <label>Уведомления</label>
-                        <select id="set-notif">
-                            <option value="true">Вкл</option>
-                            <option value="false">Выкл</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Результатов на страницу</label>
-                        <input id="set-perpage" type="number" />
-                    </div>
-                    <div class="form-group">
-                        <label>Тема</label>
-                        <select id="set-theme">
-                            <option value="LIGHT">Светлая</option>
-                            <option value="DARK">Тёмная</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-success" onclick="saveSettings()">Сохранить</button>
                 </div>
             </div>
         </div>
@@ -334,7 +310,6 @@
             if (id === 'events') loadEvents();
             if (id === 'orders') loadOrders();
             if (id === 'temp') loadTempRequests();
-            if (id === 'settings') loadSettings();
         }
 
         async function api(url, opts = {}, authenticated = true) {
@@ -378,8 +353,6 @@
             document.body.dataset.theme = value === 'DARK' ? 'dark' : 'light';
             const button = document.getElementById('theme-toggle');
             if (button) button.textContent = value === 'DARK' ? 'Светлая тема' : 'Тёмная тема';
-            const select = document.getElementById('set-theme');
-            if (select) select.value = value;
             return value;
         }
 
@@ -437,8 +410,7 @@
             document.getElementById('current-user').textContent = user.userId;
             document.getElementById('order-user').value = user.userId;
             document.getElementById('temp-user').value = user.userId;
-            document.getElementById('set-user').value = user.userId;
-            document.getElementById('settings-fields').style.display = 'none';
+            document.getElementById('set-user').textContent = user.userId;
             loadEvents();
             loadProfileTheme();
         }
@@ -814,37 +786,7 @@
         }
 
         // --- SETTINGS ---
-        async function loadSettings() {
-            if (!currentUser) return;
-            const userId = currentUser.userId;
-            const s = await api(`/api/settings/${userId}`);
-            document.getElementById('set-cat').value = s.preferredCategory || '';
-            document.getElementById('set-lang').value = s.language || '';
-            document.getElementById('set-notif').value = s.notificationsEnabled;
-            document.getElementById('set-perpage').value = s.maxResultsPerPage;
-            document.getElementById('set-theme').value = s.theme || 'LIGHT';
-            document.getElementById('settings-fields').style.display = 'flex';
-        }
-
-        async function saveSettings() {
-            if (!currentUser) return;
-            const userId = currentUser.userId;
-            const theme = document.getElementById('set-theme').value;
-            const saved = await api(`/api/settings/${userId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    preferredCategory: document.getElementById('set-cat').value,
-                    language: document.getElementById('set-lang').value,
-                    notificationsEnabled: document.getElementById('set-notif').value === 'true',
-                    maxResultsPerPage: parseInt(document.getElementById('set-perpage').value) || 20,
-                    theme
-                })
-            });
-            applyTheme(saved.theme);
-            sessionStorage.setItem(THEME_STORAGE_KEY, saved.theme);
-            loadSettings();
-        }
+        // Тема переключается кнопкой в шапке (toggleTheme).
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
