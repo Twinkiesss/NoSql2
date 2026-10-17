@@ -199,20 +199,26 @@ public class EventService {
         return repository.findByCategory(category);
     }
 
-    public List<Event> search(String type, LocalDateTime from, LocalDateTime to,
-                              String nestedState, String sort, boolean desc, int page, int size) {
+    public ru.library.event.model.PageResponse<Event> searchPage(
+            String type, LocalDateTime from, LocalDateTime to,
+            String q, String category, boolean availableOnly,
+            String sort, boolean desc, int page, int size) {
         String key = String.join("|",
-                String.valueOf(type), String.valueOf(from), String.valueOf(to),
-                String.valueOf(nestedState), String.valueOf(sort), String.valueOf(desc),
+                "page", String.valueOf(type), String.valueOf(from), String.valueOf(to),
+                String.valueOf(q), String.valueOf(category), String.valueOf(availableOnly),
+                String.valueOf(sort), String.valueOf(desc),
                 String.valueOf(page), String.valueOf(size));
         Optional<JsonNode> cached = queryCache.get(key);
         if (cached.isPresent()) {
             return mapper.convertValue(cached.get(),
-                    mapper.getTypeFactory().constructCollectionType(List.class, Event.class));
+                    new com.fasterxml.jackson.core.type.TypeReference<ru.library.event.model.PageResponse<Event>>() {});
         }
-        List<Event> result = repository.search(type, from, to, nestedState, sort, desc, page, size);
-        queryCache.put(key, mapper.valueToTree(result));
-        return result;
+        List<Event> items = repository.search(type, from, to, null, q, category, availableOnly, sort, desc, page, size);
+        int total = repository.countSearch(type, from, to, null, q, category, availableOnly);
+        ru.library.event.model.PageResponse<Event> response =
+                ru.library.event.model.PageResponse.of(items, total, page, size);
+        queryCache.put(key, mapper.valueToTree(response));
+        return response;
     }
 
     public JsonNode explain(String type, LocalDateTime from, LocalDateTime to) {
@@ -239,6 +245,6 @@ public class EventService {
 
 
     public List<Event> relatedSearch(String nestedState) {
-        return repository.search(null, null, null, nestedState, "updatedAt", false, 0, 100);
+        return repository.search(null, null, null, nestedState, null, null, false, "updatedAt", false, 0, 100);
     }
 }

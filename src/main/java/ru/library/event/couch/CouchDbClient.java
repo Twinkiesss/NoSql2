@@ -75,7 +75,7 @@ public class CouchDbClient {
         }
     }
 
-    public JsonNode find(Map<String, Object> selector, Map<String, Object> sort,
+    public JsonNode find(Map<String, Object> selector, java.util.List<Map<String, String>> sort,
                          int limit, int skip, String fields) {
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("selector", selector);
@@ -89,7 +89,16 @@ public class CouchDbClient {
         return post("/" + database + "/_find", body);
     }
 
-    public JsonNode explain(Map<String, Object> selector, Map<String, Object> sort) {
+    public int count(Map<String, Object> selector) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("selector", selector);
+        body.put("fields", java.util.List.of("_id"));
+        body.put("limit", 100000);
+        JsonNode result = post("/" + database + "/_find", body);
+        return result.path("docs").size();
+    }
+
+    public JsonNode explain(Map<String, Object> selector, java.util.List<Map<String, String>> sort) {
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("selector", selector);
         if (sort != null && !sort.isEmpty()) body.put("sort", sort);

@@ -101,6 +101,17 @@
         .settings-form .form-group input { width: 100%; }
         .form-actions { display: flex; align-items: center; gap: 12px; }
         .danger-text { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+        .catalog-filters { display: flex; gap: 10px; align-items: end; padding: 16px 20px; background: var(--form-bg); border-top: 1px solid var(--border); flex-wrap: wrap; }
+        .catalog-filters .form-group input, .catalog-filters .form-group select { min-width: 180px; }
+        .filter-check { justify-content: center; }
+        .filter-check label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--label); cursor: pointer; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { color: #3498db; }
+        .sort-arrow { font-size: 11px; color: #3498db; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--border); }
+        .pagination button:disabled { opacity: .4; cursor: default; }
+        .page-info { font-size: 13px; color: var(--label); }
+        .pagination select { padding: 5px 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 12px; background: var(--input-bg); color: var(--text); }
         [hidden] { display: none !important; }
         .auth-screen { position: fixed; inset: 0; z-index: 1000; background: rgba(44,62,80,.96); display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card { width: 100%; max-width: 380px; background: var(--card-bg); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.3); padding: 24px; }
@@ -126,14 +137,14 @@
             </div>
             <form id="login-form" class="auth-form" onsubmit="login(event)">
                 <label for="login-user">User ID</label>
-                <input id="login-user" autocomplete="username" pattern="[A-Za-z0-9_-]{3,64}" required />
+                <input id="login-user" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,64}" required />
                 <label for="login-password">Пароль</label>
                 <input id="login-password" type="password" autocomplete="current-password" minlength="6" maxlength="72" required />
                 <button type="submit">Войти</button>
             </form>
             <form id="register-form" class="auth-form" onsubmit="register(event)" hidden>
                 <label for="register-user">User ID</label>
-                <input id="register-user" autocomplete="username" pattern="[A-Za-z0-9_-]{3,64}" required />
+                <input id="register-user" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,64}" required />
                 <label for="register-password">Пароль</label>
                 <input id="register-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
                 <label for="register-password-confirm">Повторите пароль</label>
@@ -192,19 +203,43 @@
                     <button class="btn btn-success" type="submit">Добавить книгу</button>
                     <div id="event-form-message" class="form-message"></div>
                 </form>
+                <div class="catalog-filters">
+                    <div class="form-group">
+                        <label for="filter-q">Поиск</label>
+                        <input id="filter-q" placeholder="Название или автор" />
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-category">Категория</label>
+                        <select id="filter-category"><option value="">Все категории</option></select>
+                    </div>
+                    <div class="form-group filter-check">
+                        <label><input type="checkbox" id="filter-available" /> Только доступные</label>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="resetFilters()">Сбросить</button>
+                </div>
                 <table>
                     <thead>
                         <tr>
-                            <th>Название</th>
-                            <th>Автор</th>
-                            <th>Категория</th>
-                            <th>Копии</th>
-                            <th>Просмотры</th>
+                            <th class="sortable" data-sort="title" onclick="toggleSort('title')">Название <span class="sort-arrow"></span></th>
+                            <th class="sortable" data-sort="author" onclick="toggleSort('author')">Автор <span class="sort-arrow"></span></th>
+                            <th class="sortable" data-sort="category" onclick="toggleSort('category')">Категория <span class="sort-arrow"></span></th>
+                            <th class="sortable" data-sort="availableCopies" onclick="toggleSort('availableCopies')">Копии <span class="sort-arrow"></span></th>
+                            <th class="sortable" data-sort="viewCount" onclick="toggleSort('viewCount')">Просмотры <span class="sort-arrow"></span></th>
                             <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody id="events-body"></tbody>
                 </table>
+                <div class="pagination">
+                    <button type="button" class="btn btn-primary btn-sm" id="page-prev" onclick="changePage(-1)">‹ Пред</button>
+                    <span id="page-info" class="page-info"></span>
+                    <button type="button" class="btn btn-primary btn-sm" id="page-next" onclick="changePage(1)">След ›</button>
+                    <select id="page-size" onchange="changePageSize()">
+                        <option value="10">10 на странице</option>
+                        <option value="20">20 на странице</option>
+                        <option value="50">50 на странице</option>
+                    </select>
+                </div>
                 <div id="book-details" class="form-message"></div>
             </div>
         </div>
@@ -346,7 +381,7 @@
             document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             btn.classList.add('active');
-            if (id === 'events') loadEvents();
+            if (id === 'events') { loadEvents(); populateCategoryFilter(); }
             if (id === 'orders') loadOrders();
             if (id === 'temp') loadTempRequests();
         }
@@ -451,6 +486,7 @@
             document.getElementById('temp-user').value = user.userId;
             document.getElementById('set-user').textContent = user.userId;
             loadEvents();
+            populateCategoryFilter();
             loadProfileTheme();
         }
 
@@ -515,11 +551,37 @@
         }
 
         // --- EVENTS ---
+        const catalogState = { page: 0, size: 10, sort: 'updatedAt', desc: true, q: '', category: '', availableOnly: false };
+        let filterDebounce = null;
+
         async function loadEvents() {
-            eventsCache = await api('/api/events');
+            const params = new URLSearchParams();
+            if (catalogState.q) params.set('q', catalogState.q);
+            if (catalogState.category) params.set('category', catalogState.category);
+            if (catalogState.availableOnly) params.set('availableOnly', 'true');
+            params.set('sort', catalogState.sort);
+            params.set('desc', String(catalogState.desc));
+            params.set('page', String(catalogState.page));
+            params.set('size', String(catalogState.size));
+
             const tbody = document.getElementById('events-body');
-            if (!eventsCache.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">В каталоге нет книг</td></tr>'; return; }
-            tbody.innerHTML = eventsCache.map(e => `
+            let data;
+            try {
+                data = await api(`/api/events/search?${params}`);
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty">Ошибка загрузки каталога: ${esc(error.message || error)}</td></tr>`;
+                return;
+            }
+            updateSortArrows();
+            updatePagination(data);
+
+            if (!data.items.length) {
+                const msg = (catalogState.q || catalogState.category || catalogState.availableOnly)
+                    ? 'Ничего не найдено по заданным фильтрам' : 'В каталоге нет книг';
+                tbody.innerHTML = `<tr><td colspan="6" class="empty">${msg}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = data.items.map(e => `
                 <tr>
                     <td><strong>${esc(e.title)}</strong><br><small style="color:#999">${esc(e.description||'')}</small></td>
                     <td>${esc(e.author)}</td>
@@ -532,6 +594,78 @@
                     </td>
                 </tr>
             `).join('');
+        }
+
+        function updateSortArrows() {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const arrow = th.querySelector('.sort-arrow');
+                if (th.dataset.sort === catalogState.sort) {
+                    arrow.textContent = catalogState.desc ? ' ▼' : ' ▲';
+                } else {
+                    arrow.textContent = '';
+                }
+            });
+        }
+
+        function toggleSort(field) {
+            if (catalogState.sort === field) {
+                catalogState.desc = !catalogState.desc;
+            } else {
+                catalogState.sort = field;
+                catalogState.desc = false;
+            }
+            catalogState.page = 0;
+            loadEvents();
+        }
+
+        function changePage(delta) {
+            catalogState.page = Math.max(0, catalogState.page + delta);
+            loadEvents();
+        }
+
+        function changePageSize() {
+            catalogState.size = parseInt(document.getElementById('page-size').value, 10);
+            catalogState.page = 0;
+            loadEvents();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-q').value = '';
+            document.getElementById('filter-category').value = '';
+            document.getElementById('filter-available').checked = false;
+            catalogState.q = '';
+            catalogState.category = '';
+            catalogState.availableOnly = false;
+            catalogState.page = 0;
+            catalogState.sort = 'updatedAt';
+            catalogState.desc = true;
+            loadEvents();
+        }
+
+        function updatePagination(data) {
+            const totalPages = data.totalPages || 1;
+            document.getElementById('page-info').textContent = `Страница ${data.page + 1} из ${totalPages} · всего ${data.total}`;
+            document.getElementById('page-prev').disabled = data.page <= 0;
+            document.getElementById('page-next').disabled = data.page >= totalPages - 1;
+        }
+
+        function populateCategoryFilter() {
+            const sel = document.getElementById('filter-category');
+            const current = sel.value;
+            api('/api/events').then(all => {
+                const categories = [...new Set(all.map(e => e.category).filter(Boolean))].sort();
+                sel.innerHTML = '<option value="">Все категории</option>' +
+                    categories.map(c => `<option value="${esc(c)}"${c === current ? ' selected' : ''}>${esc(c)}</option>`).join('');
+                if (current && !categories.includes(current)) {
+                    sel.value = '';
+                    catalogState.category = '';
+                }
+            }).catch(() => {});
+        }
+
+        async function loadAllEventsForSelects() {
+            eventsCache = await api('/api/events');
+            return eventsCache;
         }
 
         function showEventFormMessage(text, type) {
@@ -575,6 +709,7 @@
                 document.getElementById('event-copies').value = '1';
                 showEventFormMessage('Книга добавлена в каталог', 'success');
                 await loadEvents();
+                populateCategoryFilter();
             } catch (error) {
                 showEventFormMessage(error.message || 'Не удалось добавить книгу в каталог', 'error');
             } finally {
@@ -651,9 +786,8 @@
         async function loadOrders() {
             const [orders, evts] = await Promise.all([
                 api('/api/orders'),
-                api('/api/events')
+                loadAllEventsForSelects()
             ]);
-            eventsCache = evts;
 
             const sel = document.getElementById('order-event');
             sel.innerHTML = evts.map(e => `
@@ -750,9 +884,8 @@
             if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
             const [reqs, evts] = await Promise.all([
                 api('/api/temp-requests'),
-                api('/api/events')
+                loadAllEventsForSelects()
             ]);
-            eventsCache = evts;
 
             const sel = document.getElementById('temp-event');
             sel.innerHTML = evts.map(e => `<option value="${e.id}">${esc(e.title)}</option>`).join('');
@@ -880,6 +1013,24 @@
             form.addEventListener('submit', event => {
                 event.preventDefault();
                 createEvent();
+            });
+            document.getElementById('filter-q').addEventListener('input', () => {
+                clearTimeout(filterDebounce);
+                filterDebounce = setTimeout(() => {
+                    catalogState.q = document.getElementById('filter-q').value.trim();
+                    catalogState.page = 0;
+                    loadEvents();
+                }, 350);
+            });
+            document.getElementById('filter-category').addEventListener('change', () => {
+                catalogState.category = document.getElementById('filter-category').value;
+                catalogState.page = 0;
+                loadEvents();
+            });
+            document.getElementById('filter-available').addEventListener('change', () => {
+                catalogState.availableOnly = document.getElementById('filter-available').checked;
+                catalogState.page = 0;
+                loadEvents();
             });
         });
 

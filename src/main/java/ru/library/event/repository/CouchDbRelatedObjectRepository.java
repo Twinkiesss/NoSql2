@@ -28,7 +28,7 @@ public class CouchDbRelatedObjectRepository {
     public List<RelatedObject> findByEventId(String eventId) {
         JsonNode result = couch.find(
                 Map.of("type", "relatedObject", "eventId", eventId),
-                Map.of("createdAt", "asc"), 10000, 0, null);
+                List.of(Map.of("createdAt", "asc")), 10000, 0, null);
         List<RelatedObject> objects = new ArrayList<>();
         result.path("docs").forEach(n -> {
             com.fasterxml.jackson.databind.node.ObjectNode copy = (com.fasterxml.jackson.databind.node.ObjectNode) n.deepCopy();

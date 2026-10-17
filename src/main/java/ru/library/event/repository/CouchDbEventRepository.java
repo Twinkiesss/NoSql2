@@ -13,7 +13,6 @@ import java.util.*;
 @Repository
 public class CouchDbEventRepository {
     private final CouchDbClient couch;
-    private final Map<String, Event> cache = new HashMap<>();
 
     public CouchDbEventRepository(CouchDbClient couch) {
         this.couch = couch;
@@ -25,7 +24,6 @@ public class CouchDbEventRepository {
         }
         JsonNode result = couch.put("/" + couch.database() + "/" + event.getId(), toDocument(event));
         if (result.has("rev")) event.setRev(result.get("rev").asText());
-        cache.put(event.getId(), event);
         return event;
     }
 
@@ -43,13 +41,11 @@ public class CouchDbEventRepository {
     public Event findById(String id) {
         JsonNode node = couch.getOrNull("/" + couch.database() + "/" + id);
         if (node == null || node.has("_deleted")) return null;
-        Event event = fromDocument(node);
-        cache.put(id, event);
-        return event;
+        return fromDocument(node);
     }
 
     public List<Event> findAll() {
-        JsonNode result = couch.find(Map.of("type", "event"), Map.of(), 10000, 0, null);
+        JsonNode result = couch.find(Map.of("type", "event"), List.of(), 10000, 0, null);
         List<Event> events = new ArrayList<>();
         result.path("docs").forEach(n -> events.add(fromDocument(n)));
         return events;
@@ -57,12 +53,46 @@ public class CouchDbEventRepository {
 
     public void delete(String id, String rev) {
         couch.delete("/" + couch.database() + "/" + id + "?rev=" + rev);
-        cache.remove(id);
     }
 
     public List<Event> search(String type, LocalDateTime from, LocalDateTime to,
-                              String nestedState, String sort, boolean descending,
+                              String nestedState, String q, String category, boolean availableOnly,
+                              String sort, boolean descending,
                               int page, int size) {
+        Map<String, Object> selector = buildSearchSelector(type, from, to, nestedState, q, category, availableOnly);
+        String field = sort == null || sort.isBlank() ? "updatedAt" : sort;
+
+        JsonNode result = couch.find(selector, List.of(), 10000, 0, null);
+        List<Event> events = new ArrayList<>();
+        result.path("docs").forEach(n -> events.add(fromDocument(n)));
+        events.sort(comparator(field, descending));
+        int fromIdx = Math.min(page * size, events.size());
+        int toIdx = Math.min(fromIdx + size, events.size());
+        return new ArrayList<>(events.subList(fromIdx, toIdx));
+    }
+
+    private static Comparator<Event> comparator(String field, boolean descending) {
+        Comparator<Event> cmp;
+        switch (field) {
+            case "title": cmp = Comparator.comparing(Event::getTitle, Comparator.nullsLast(Comparator.naturalOrder())); break;
+            case "author": cmp = Comparator.comparing(Event::getAuthor, Comparator.nullsLast(Comparator.naturalOrder())); break;
+            case "category": cmp = Comparator.comparing(Event::getCategory, Comparator.nullsLast(Comparator.naturalOrder())); break;
+            case "availableCopies": cmp = Comparator.comparingInt(Event::getAvailableCopies); break;
+            case "viewCount": cmp = Comparator.comparingLong(Event::getViewCount); break;
+            case "createdAt": cmp = Comparator.comparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())); break;
+            default: cmp = Comparator.comparing(Event::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder())); break;
+        }
+        return descending ? cmp.reversed() : cmp;
+    }
+
+    public int countSearch(String type, LocalDateTime from, LocalDateTime to,
+                           String nestedState, String q, String category, boolean availableOnly) {
+        return couch.count(buildSearchSelector(type, from, to, nestedState, q, category, availableOnly));
+    }
+
+    private Map<String, Object> buildSearchSelector(String type, LocalDateTime from, LocalDateTime to,
+                                                    String nestedState, String q, String category,
+                                                    boolean availableOnly) {
         Map<String, Object> selector = new LinkedHashMap<>();
         selector.put("type", "event");
 
@@ -78,14 +108,20 @@ public class CouchDbEventRepository {
         if (nestedState != null && !nestedState.isBlank()) {
             selector.put("stateHistory.state", nestedState);
         }
-
-        String field = sort == null || sort.isBlank() ? "updatedAt" : sort;
-        Map<String, Object> sortSpec = Map.of(field, descending ? "desc" : "asc");
-        JsonNode result = couch.find(selector, sortSpec, size, Math.max(page, 0) * size, null);
-
-        List<Event> events = new ArrayList<>();
-        result.path("docs").forEach(n -> events.add(fromDocument(n)));
-        return events;
+        if (category != null && !category.isBlank()) {
+            selector.put("category", category);
+        }
+        if (availableOnly) {
+            selector.put("availableCopies", Map.of("$gt", 0));
+        }
+        if (q != null && !q.isBlank()) {
+            String escaped = q.trim().replaceAll("([\\\\.\\[\\]{}()*+?^$|])", "\\\\$1");
+            selector.put("$or", java.util.List.of(
+                    Map.of("title", Map.of("$regex", "(?i)" + escaped)),
+                    Map.of("author", Map.of("$regex", "(?i)" + escaped))
+            ));
+        }
+        return selector;
     }
 
     public JsonNode explain(String type, LocalDateTime from, LocalDateTime to) {
@@ -98,15 +134,16 @@ public class CouchDbEventRepository {
             if (to != null) range.put("$lte", to.toString());
             selector.put("updatedAt", range);
         }
-        return couch.explain(selector, Map.of("updatedAt", "asc"));
+        return couch.explain(selector, List.of());
     }
 
     public List<Event> findByCategory(String category) {
         JsonNode result = couch.find(
                 Map.of("type", "event", "category", category),
-                Map.of("updatedAt", "desc"), 10000, 0, null);
+                List.of(), 10000, 0, null);
         List<Event> events = new ArrayList<>();
         result.path("docs").forEach(n -> events.add(fromDocument(n)));
+        events.sort(comparator("updatedAt", true));
         return events;
     }
 

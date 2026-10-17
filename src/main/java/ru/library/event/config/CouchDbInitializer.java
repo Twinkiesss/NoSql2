@@ -95,6 +95,12 @@ public class CouchDbInitializer implements CommandLineRunner {
     private void installIndex() {
         createIndex("event-updated-at", java.util.List.of("type", "updatedAt"));
         createIndex("event-type-updated-at", java.util.List.of("type", "eventType", "updatedAt"));
+        createIndex("event-title", java.util.List.of("type", "title"));
+        createIndex("event-author", java.util.List.of("type", "author"));
+        createIndex("event-category", java.util.List.of("type", "category"));
+        createIndex("event-available-copies", java.util.List.of("type", "availableCopies"));
+        createIndex("event-view-count", java.util.List.of("type", "viewCount"));
+        createIndex("event-created-at", java.util.List.of("type", "createdAt"));
     }
 
     private void createIndex(String name, java.util.List<String> fields) {
