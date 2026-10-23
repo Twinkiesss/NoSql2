@@ -1,10 +1,12 @@
 package ru.library.event.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import ru.library.event.model.CreateEventRequest;
 import ru.library.event.model.Event;
+import ru.library.event.model.EventSearchRequest;
 import ru.library.event.model.PageResponse;
 import ru.library.event.model.RelatedObject;
 import ru.library.event.repository.CouchDbRelatedObjectRepository;
@@ -12,15 +14,11 @@ import ru.library.event.service.EventService;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/events")
 @CrossOrigin(origins = "*")
 public class EventController {
-    private static final Set<String> SORT_FIELDS = Set.of(
-            "title", "author", "category", "availableCopies", "viewCount", "createdAt", "updatedAt");
-
     private final EventService eventService;
     private final CouchDbRelatedObjectRepository relatedRepository;
 
@@ -39,24 +37,9 @@ public class EventController {
         return ResponseEntity.ok(eventService.createEvent(event, authentication.getName()));
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<PageResponse<Event>> search(
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) LocalDateTime from,
-            @RequestParam(required = false) LocalDateTime to,
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) String category,
-            @RequestParam(defaultValue = "false") boolean availableOnly,
-            @RequestParam(defaultValue = "updatedAt") String sort,
-            @RequestParam(defaultValue = "false") boolean desc,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        int safePage = Math.max(page, 0);
-        int safeSize = Math.min(Math.max(size, 1), 100);
-        String safeSort = SORT_FIELDS.contains(sort) ? sort : "updatedAt";
-        String safeQ = q == null || q.length() > 100 ? null : q;
-        return ResponseEntity.ok(eventService.searchPage(
-                type, from, to, safeQ, category, availableOnly, safeSort, desc, safePage, safeSize));
+    @PostMapping("/search")
+    public ResponseEntity<PageResponse<Event>> search(@Valid @RequestBody EventSearchRequest request) {
+        return ResponseEntity.ok(eventService.searchPage(request));
     }
 
     @GetMapping("/search/explain")

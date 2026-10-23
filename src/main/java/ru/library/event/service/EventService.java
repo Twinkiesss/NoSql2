@@ -199,24 +199,28 @@ public class EventService {
         return repository.findByCategory(category);
     }
 
-    public ru.library.event.model.PageResponse<Event> searchPage(
-            String type, LocalDateTime from, LocalDateTime to,
-            String q, String category, boolean availableOnly,
-            String sort, boolean desc, int page, int size) {
+    public ru.library.event.model.PageResponse<Event> searchPage(ru.library.event.model.EventSearchRequest request) {
+        String sortField = request.getSort() == null
+                ? ru.library.event.model.EventSort.UPDATED_AT.getField()
+                : request.getSort().getField();
+        String q = request.getQ() == null || request.getQ().isBlank() ? null : request.getQ();
         String key = String.join("|",
-                "page", String.valueOf(type), String.valueOf(from), String.valueOf(to),
-                String.valueOf(q), String.valueOf(category), String.valueOf(availableOnly),
-                String.valueOf(sort), String.valueOf(desc),
-                String.valueOf(page), String.valueOf(size));
+                "page", String.valueOf(request.getType()), String.valueOf(request.getFrom()), String.valueOf(request.getTo()),
+                String.valueOf(q), String.valueOf(request.getCategory()), String.valueOf(request.isAvailableOnly()),
+                sortField, String.valueOf(request.isDesc()),
+                String.valueOf(request.getPage()), String.valueOf(request.getSize()));
         Optional<JsonNode> cached = queryCache.get(key);
         if (cached.isPresent()) {
             return mapper.convertValue(cached.get(),
                     new com.fasterxml.jackson.core.type.TypeReference<ru.library.event.model.PageResponse<Event>>() {});
         }
-        List<Event> items = repository.search(type, from, to, null, q, category, availableOnly, sort, desc, page, size);
-        int total = repository.countSearch(type, from, to, null, q, category, availableOnly);
+        List<Event> items = repository.search(request.getType(), request.getFrom(), request.getTo(),
+                null, q, request.getCategory(), request.isAvailableOnly(),
+                sortField, request.isDesc(), request.getPage(), request.getSize());
+        int total = repository.countSearch(request.getType(), request.getFrom(), request.getTo(),
+                null, q, request.getCategory(), request.isAvailableOnly());
         ru.library.event.model.PageResponse<Event> response =
-                ru.library.event.model.PageResponse.of(items, total, page, size);
+                ru.library.event.model.PageResponse.of(items, total, request.getPage(), request.getSize());
         queryCache.put(key, mapper.valueToTree(response));
         return response;
     }

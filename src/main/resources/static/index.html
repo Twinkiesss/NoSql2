@@ -103,6 +103,8 @@
         .danger-text { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
         .catalog-filters { display: flex; gap: 10px; align-items: end; padding: 16px 20px; background: var(--form-bg); border-top: 1px solid var(--border); flex-wrap: wrap; }
         .catalog-filters .form-group input, .catalog-filters .form-group select { min-width: 180px; }
+        .search-row { display: flex; gap: 6px; }
+        .search-row input { flex: 1; }
         .filter-check { justify-content: center; }
         .filter-check label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--label); cursor: pointer; }
         .sortable { cursor: pointer; user-select: none; }
@@ -206,7 +208,10 @@
                 <div class="catalog-filters">
                     <div class="form-group">
                         <label for="filter-q">Поиск</label>
-                        <input id="filter-q" placeholder="Название или автор" />
+                        <div class="search-row">
+                            <input id="filter-q" placeholder="Название или автор" />
+                            <button type="button" class="btn btn-primary" onclick="applySearch()">Найти</button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="filter-category">Категория</label>
@@ -552,22 +557,26 @@
 
         // --- EVENTS ---
         const catalogState = { page: 0, size: 10, sort: 'updatedAt', desc: true, q: '', category: '', availableOnly: false };
-        let filterDebounce = null;
 
         async function loadEvents() {
-            const params = new URLSearchParams();
-            if (catalogState.q) params.set('q', catalogState.q);
-            if (catalogState.category) params.set('category', catalogState.category);
-            if (catalogState.availableOnly) params.set('availableOnly', 'true');
-            params.set('sort', catalogState.sort);
-            params.set('desc', String(catalogState.desc));
-            params.set('page', String(catalogState.page));
-            params.set('size', String(catalogState.size));
+            const body = {
+                sort: catalogState.sort,
+                desc: catalogState.desc,
+                page: catalogState.page,
+                size: catalogState.size
+            };
+            if (catalogState.q) body.q = catalogState.q;
+            if (catalogState.category) body.category = catalogState.category;
+            if (catalogState.availableOnly) body.availableOnly = true;
 
             const tbody = document.getElementById('events-body');
             let data;
             try {
-                data = await api(`/api/events/search?${params}`);
+                data = await api('/api/events/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
             } catch (error) {
                 tbody.innerHTML = `<tr><td colspan="6" class="empty">Ошибка загрузки каталога: ${esc(error.message || error)}</td></tr>`;
                 return;
@@ -639,6 +648,14 @@
             catalogState.page = 0;
             catalogState.sort = 'updatedAt';
             catalogState.desc = true;
+            loadEvents();
+        }
+
+        function applySearch() {
+            const value = document.getElementById('filter-q').value.trim();
+            if (value === catalogState.q) return;
+            catalogState.q = value;
+            catalogState.page = 0;
             loadEvents();
         }
 
@@ -1014,14 +1031,13 @@
                 event.preventDefault();
                 createEvent();
             });
-            document.getElementById('filter-q').addEventListener('input', () => {
-                clearTimeout(filterDebounce);
-                filterDebounce = setTimeout(() => {
-                    catalogState.q = document.getElementById('filter-q').value.trim();
-                    catalogState.page = 0;
-                    loadEvents();
-                }, 350);
+            document.getElementById('filter-q').addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applySearch();
+                }
             });
+            document.getElementById('filter-q').addEventListener('blur', applySearch);
             document.getElementById('filter-category').addEventListener('change', () => {
                 catalogState.category = document.getElementById('filter-category').value;
                 catalogState.page = 0;

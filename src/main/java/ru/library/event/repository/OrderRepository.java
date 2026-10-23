@@ -13,4 +13,10 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Order o where o.id = :id")
     Optional<Order> findByIdForUpdate(@Param("id") String id);
+
+    long countByUserIdAndIssuedAtNotNull(String userId);
+
+    long countByUserIdAndReturnedAtNotNull(String userId);
+
+    long countByUserIdAndStatus(String userId, Order.Status status);
 }
