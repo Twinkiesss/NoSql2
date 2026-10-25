@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ru.library.event.model.AdminRegisterRequest;
 import ru.library.event.model.AuthRequest;
 import ru.library.event.model.AuthResponse;
 import ru.library.event.model.ChangePasswordRequest;
+import ru.library.event.model.RegisterRequest;
 import ru.library.event.service.AuthService;
 
 @RestController
@@ -27,8 +29,13 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody AuthRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    }
+
+    @PostMapping("/register-admin")
+    public ResponseEntity<AuthResponse> registerAdmin(@Valid @RequestBody AdminRegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerAdmin(request));
     }
 
     @PostMapping("/login")
@@ -38,7 +45,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(Authentication authentication) {
-        return ResponseEntity.ok(new AuthResponse(authentication.getName()));
+        return ResponseEntity.ok(authService.currentUser(authentication.getName()));
     }
 
     @PostMapping("/change-password")

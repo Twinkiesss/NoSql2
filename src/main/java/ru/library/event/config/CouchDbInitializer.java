@@ -72,6 +72,11 @@ public class CouchDbInitializer implements CommandLineRunner {
                 "map", "function(doc) { if (doc.type === 'action') { emit([doc.userId, doc.action], 1); } }",
                 "reduce", "_count"
         ));
+        views.put("user_views", Map.of(
+                "map", "function(doc) { if (doc.type === 'action' && doc.action === 'VIEW') " +
+                        "{ emit([doc.userId, doc.eventId], 1); } }",
+                "reduce", "_count"
+        ));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("_id", "_design/analytics");
         body.put("language", "javascript");

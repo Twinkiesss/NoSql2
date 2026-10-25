@@ -1,10 +1,18 @@
 package ru.library.event.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import ru.library.event.model.TemporaryRequest;
+import ru.library.event.model.TemporaryRequestResponse;
 import ru.library.event.service.OrderService;
 
 import java.util.List;
@@ -16,40 +24,49 @@ public class TemporaryRequestController {
 
     private final OrderService orderService;
 
-    @Autowired
     public TemporaryRequestController(OrderService orderService) {
         this.orderService = orderService;
     }
 
     @PostMapping
-    public ResponseEntity<TemporaryRequest> createTemporaryRequest(
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TemporaryRequestResponse> createTemporaryRequest(
             @RequestParam String eventId,
+            @RequestParam String userId,
             @RequestParam(defaultValue = "reservation") String purpose,
             @RequestParam(defaultValue = "300") long ttlSeconds,
             Authentication authentication) {
-        TemporaryRequest request = orderService.createTemporaryRequest(eventId, authentication.getName(), purpose, ttlSeconds);
-        return ResponseEntity.ok(request);
+        TemporaryRequest request = orderService.createTemporaryRequest(
+                eventId, userId, authentication.getName(), purpose, ttlSeconds);
+        return ResponseEntity.ok(TemporaryRequestResponse.from(request));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TemporaryRequest> getTemporaryRequest(@PathVariable String id) {
-        return orderService.getTemporaryRequest(id)
-                .filter(req -> !req.isExpired())
-                .map(ResponseEntity::ok)
+    public ResponseEntity<TemporaryRequestResponse> getTemporaryRequest(
+            @PathVariable String id, Authentication authentication) {
+        return orderService.getTemporaryRequest(id, authentication.getName(), isAdmin(authentication))
+                .filter(request -> !request.isExpired())
+                .map(request -> ResponseEntity.ok(TemporaryRequestResponse.from(request)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
-    public ResponseEntity<List<TemporaryRequest>> getAllTemporaryRequests() {
-        List<TemporaryRequest> requests = orderService.getAllTemporaryRequests().stream()
-                .filter(req -> !req.isExpired())
-                .toList();
-        return ResponseEntity.ok(requests);
+    public ResponseEntity<List<TemporaryRequestResponse>> getAllTemporaryRequests(Authentication authentication) {
+        return ResponseEntity.ok(orderService.getTemporaryRequests(
+                        authentication.getName(), isAdmin(authentication)).stream()
+                .map(TemporaryRequestResponse::from)
+                .toList());
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteTemporaryRequest(@PathVariable String id) {
         orderService.deleteTemporaryRequest(id);
         return ResponseEntity.ok().build();
+    }
+
+    private static boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 }

@@ -24,11 +24,18 @@ public class Order {
     @Column(length = 36, nullable = false)
     private String eventId;
 
-    @Column(length = 36, nullable = false)
+    /** Администратор, который выдал книгу. До выдачи — null. */
+    @Column(length = 36)
     private String managerId;
+
+    @Column(length = 100)
+    private String managerName;
 
     @Column(nullable = false)
     private String userId;
+
+    @Column(length = 100)
+    private String readerName;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -51,11 +58,11 @@ public class Order {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public Order(String eventId, String managerId, String userId) {
+    public Order(String eventId, String userId, String readerName) {
         this();
         this.eventId = eventId;
-        this.managerId = managerId;
         this.userId = userId;
+        this.readerName = readerName;
     }
 
     public String getId() { return id; }
@@ -65,9 +72,16 @@ public class Order {
     public void setEventId(String eventId) { this.eventId = eventId; }
 
     public String getManagerId() { return managerId; }
+    public void setManagerId(String managerId) { this.managerId = managerId; }
+
+    public String getManagerName() { return managerName; }
+    public void setManagerName(String managerName) { this.managerName = managerName; }
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
+
+    public String getReaderName() { return readerName; }
+    public void setReaderName(String readerName) { this.readerName = readerName; }
 
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }

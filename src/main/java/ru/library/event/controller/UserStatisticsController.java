@@ -1,6 +1,7 @@
 package ru.library.event.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ public class UserStatisticsController {
     }
 
     @GetMapping("/me/statistics")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<UserStatisticsResponse> getMyStatistics(Authentication authentication) {
         return ResponseEntity.ok(statisticsService.getStatistics(authentication.getName()));
     }

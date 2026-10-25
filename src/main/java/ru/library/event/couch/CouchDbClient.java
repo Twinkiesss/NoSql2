@@ -89,6 +89,14 @@ public class CouchDbClient {
         return post("/" + database + "/_find", body);
     }
 
+    public JsonNode view(String designDoc, String viewName, Map<String, String> params) {
+        return client.get().uri(builder -> {
+            builder.path("/{database}/_design/{design}/_view/{view}");
+            params.forEach(builder::queryParam);
+            return builder.build(database, designDoc, viewName);
+        }).retrieve().body(JsonNode.class);
+    }
+
     public int count(Map<String, Object> selector) {
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("selector", selector);

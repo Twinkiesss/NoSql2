@@ -66,7 +66,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
-        return response(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+        return response(HttpStatus.UNAUTHORIZED, "Неверный логин или пароль");
     }
 
     @ExceptionHandler(AccessDeniedException.class)

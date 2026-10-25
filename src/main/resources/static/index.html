@@ -6,6 +6,7 @@
     <title>Сервис заявок</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        [hidden] { display: none !important; }
         :root {
             --bg: #f5f5f5;
             --card-bg: #ffffff;
@@ -49,6 +50,8 @@
         .user-actions button:hover { background: #566a7b; }
         .user-actions .logout-btn { background: #c0392b; }
         .user-actions .logout-btn:hover { background: #e74c3c; }
+        .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #f39c12; color: #1b1b1b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .role-badge.user { background: #3498db; color: #fff; }
         nav { display: flex; gap: 4px; background: #34495e; padding: 0 max(24px, calc((100% - 1068px) / 2)); }
         nav button { background: none; border: none; color: #95a5a6; padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent; transition: all .15s; }
         nav button:hover { color: #ecf0f1; }
@@ -117,7 +120,7 @@
         .pagination button:disabled { opacity: .4; cursor: default; }
         .page-info { font-size: 13px; color: var(--label); }
         .pagination select { padding: 5px 8px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 12px; background: var(--input-bg); color: var(--text); }
-        [hidden] { display: none !important; }
+        body[data-role="user"] .reader-col { display: none; }
         .auth-screen { position: fixed; inset: 0; z-index: 1000; background: rgba(44,62,80,.96); display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card { width: 100%; max-width: 380px; background: var(--card-bg); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.3); padding: 24px; }
         .auth-card h2 { font-size: 20px; margin-bottom: 16px; text-align: center; }
@@ -139,22 +142,36 @@
         <div class="auth-tabs">
             <button id="login-tab" class="active" type="button" onclick="setAuthMode('login')">Вход</button>
             <button id="register-tab" type="button" onclick="setAuthMode('register')">Регистрация</button>
+            <button id="admin-register-tab" type="button" onclick="setAuthMode('admin')">Админ</button>
         </div>
         <form id="login-form" class="auth-form" onsubmit="login(event)">
-            <label for="login-user">User ID</label>
+            <label for="login-user">Логин</label>
             <input id="login-user" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,64}" required />
             <label for="login-password">Пароль</label>
             <input id="login-password" type="password" autocomplete="current-password" minlength="6" maxlength="72" required />
             <button type="submit">Войти</button>
         </form>
         <form id="register-form" class="auth-form" onsubmit="register(event)" hidden>
-            <label for="register-user">User ID</label>
+            <label for="register-user">Логин</label>
             <input id="register-user" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,64}" required />
+            <label for="register-name">Имя</label>
+            <input id="register-name" maxlength="100" minlength="2" required />
             <label for="register-password">Пароль</label>
             <input id="register-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
             <label for="register-password-confirm">Повторите пароль</label>
             <input id="register-password-confirm" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
             <button type="submit">Зарегистрироваться</button>
+        </form>
+        <form id="admin-register-form" class="auth-form" onsubmit="registerAdmin(event)" hidden>
+            <label for="admin-user">Логин</label>
+            <input id="admin-user" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,64}" required />
+            <label for="admin-name">Имя</label>
+            <input id="admin-name" maxlength="100" minlength="2" required />
+            <label for="admin-password">Пароль</label>
+            <input id="admin-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+            <label for="admin-code">Код администратора</label>
+            <input id="admin-code" type="password" autocomplete="off" required />
+            <button type="submit">Создать администратора</button>
         </form>
         <div id="auth-error" class="auth-error"></div>
     </div>
@@ -164,6 +181,7 @@
         <h1>Сервис заявок</h1>
         <div id="user-actions" class="user-actions" hidden>
             <span id="current-user"></span>
+            <span id="current-role" class="role-badge user">читатель</span>
             <button id="theme-toggle" type="button" onclick="toggleTheme()">Тёмная тема</button>
             <button type="button" class="logout-btn" onclick="logout()">Выйти</button>
         </div>
@@ -172,8 +190,9 @@
 <div id="app-content" hidden>
     <nav>
         <button class="active" onclick="showSection('events', this)">Каталог</button>
-        <button onclick="showSection('orders', this)">События</button>
-        <button onclick="showSection('temp', this)">Временные заявки</button>
+        <button id="nav-orders" onclick="showSection('orders', this)">Мои заказы</button>
+        <button id="nav-temp" onclick="showSection('temp', this)">Временные заявки</button>
+        <button id="nav-stats" onclick="showSection('stats', this)" hidden>Статистика</button>
         <button onclick="showSection('settings', this)">Настройки</button>
     </nav>
     <main>
@@ -184,7 +203,7 @@
                     <h2>Каталог книг</h2>
                     <button class="btn btn-primary" onclick="loadEvents()">Обновить</button>
                 </div>
-                <form class="form-row" id="event-form" novalidate>
+                <form class="form-row admin-only" id="event-form" novalidate>
                     <div class="form-group wide">
                         <label for="event-title">Название</label>
                         <input id="event-title" maxlength="255" placeholder="Например, Мастер и Маргарита" required />
@@ -256,28 +275,35 @@
         <div id="orders" class="section">
             <div class="card">
                 <div class="card-header">
-                    <h2>События: взять и вернуть книгу</h2>
+                    <h2 id="orders-title">Мои заказы</h2>
                     <button class="btn btn-primary" onclick="loadOrders()">Обновить</button>
                 </div>
-                <div class="form-row" id="order-form">
+                <div class="form-row" id="order-form" hidden>
                     <div class="form-group">
                         <label>Книга</label>
                         <select id="order-event" onchange="updateOrderAvailability()"></select>
                     </div>
-                    <div class="form-group">
-                        <label>Пользователь и менеджер</label>
-                        <input id="order-user" class="input-readonly" readonly />
+                    <div class="form-group admin-only">
+                        <label>Читатель</label>
+                        <select id="order-reader"></select>
                     </div>
-                    <button id="order-submit" class="btn btn-success" onclick="createOrder()">Оформить</button>
-                    <div id="order-form-message" class="form-message"></div>
+                    <button id="order-submit" class="btn btn-success" onclick="createOrder()">Создать заявку</button>
+                </div>
+                <div id="order-form-message" class="form-message"></div>
+                <div class="catalog-filters admin-only" id="orders-filter-row" hidden>
+                    <label class="filter-check">
+                        <input type="checkbox" id="orders-only-mine" onchange="renderOrders()" />
+                        Показывать только мои и без админа
+                    </label>
                 </div>
                 <table>
                     <thead>
                     <tr>
                         <th>ID</th>
                         <th>Книга</th>
-                        <th>Пользователь</th>
+                        <th class="reader-col">Читатель</th>
                         <th>Статус</th>
+                        <th>Админ</th>
                         <th>Выдача</th>
                         <th>Возврат</th>
                         <th>Действия</th>
@@ -295,14 +321,14 @@
                     <h2>Временные заявки (Lease TTL)</h2>
                     <button class="btn btn-primary" onclick="loadTempRequests()">Обновить</button>
                 </div>
-                <div class="form-row" id="temp-form" style="display:none;">
+                <div class="form-row admin-only" id="temp-form" style="display:none;">
                     <div class="form-group">
                         <label>Книга</label>
                         <select id="temp-event"></select>
                     </div>
                     <div class="form-group">
-                        <label>Пользователь</label>
-                        <input id="temp-user" class="input-readonly" readonly />
+                        <label>Читатель</label>
+                        <select id="temp-reader"></select>
                     </div>
                     <div class="form-group">
                         <label>TTL (сек)</label>
@@ -314,8 +340,9 @@
                     <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Событие</th>
-                        <th>Пользователь</th>
+                        <th>Книга</th>
+                        <th>Читатель</th>
+                        <th>Кто создал</th>
                         <th>Цель</th>
                         <th>Осталось</th>
                         <th>Действия</th>
@@ -323,6 +350,19 @@
                     </thead>
                     <tbody id="temp-body"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- GLOBAL STATISTICS -->
+        <div id="stats" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Статистика библиотеки</h2>
+                    <button class="btn btn-primary" onclick="loadGlobalStatistics()">Обновить</button>
+                </div>
+                <div class="settings-info" id="global-stats-info">
+                    <span class="stats-loading">Загрузка...</span>
+                </div>
             </div>
         </div>
 
@@ -334,12 +374,16 @@
                 </div>
                 <div class="settings-info">
                     <div class="settings-row">
-                        <span class="settings-label">User ID:</span>
+                        <span class="settings-label">Имя:</span>
+                        <span id="set-name" class="settings-value"></span>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-label">Логин:</span>
                         <span id="set-user" class="settings-value"></span>
                     </div>
                 </div>
             </div>
-            <div class="card">
+            <div class="card user-only" id="stats-card">
                 <div class="card-header">
                     <h2>Статистика</h2>
                 </div>
@@ -400,7 +444,8 @@
         if (id === 'events') { loadEvents(); populateCategoryFilter(); }
         if (id === 'orders') loadOrders();
         if (id === 'temp') loadTempRequests();
-        if (id === 'settings') loadStatistics();
+        if (id === 'stats') loadGlobalStatistics();
+        if (id === 'settings' && !isAdminUser()) loadStatistics();
     }
 
     async function api(url, opts = {}, authenticated = true) {
@@ -432,10 +477,14 @@
 
     function setAuthMode(mode) {
         const isLogin = mode === 'login';
+        const isRegister = mode === 'register';
+        const isAdmin = mode === 'admin';
         document.getElementById('login-tab').classList.toggle('active', isLogin);
-        document.getElementById('register-tab').classList.toggle('active', !isLogin);
+        document.getElementById('register-tab').classList.toggle('active', isRegister);
+        document.getElementById('admin-register-tab').classList.toggle('active', isAdmin);
         document.getElementById('login-form').hidden = !isLogin;
-        document.getElementById('register-form').hidden = isLogin;
+        document.getElementById('register-form').hidden = !isRegister;
+        document.getElementById('admin-register-form').hidden = !isAdmin;
         document.getElementById('auth-error').textContent = '';
     }
 
@@ -486,6 +535,7 @@
     function showAuth() {
         sessionStorage.removeItem('auth');
         currentUser = null;
+        document.body.dataset.role = '';
         if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
         document.getElementById('auth-screen').hidden = false;
         document.getElementById('app-content').hidden = true;
@@ -493,15 +543,32 @@
         setAuthMode('login');
     }
 
+    function isAdminUser() {
+        return !!currentUser && currentUser.role === 'ADMIN';
+    }
+
     function applySession(user) {
         currentUser = user;
+        const admin = user.role === 'ADMIN';
+        document.body.dataset.role = admin ? 'admin' : 'user';
         document.getElementById('auth-screen').hidden = true;
         document.getElementById('app-content').hidden = false;
         document.getElementById('user-actions').hidden = false;
-        document.getElementById('current-user').textContent = user.userId;
-        document.getElementById('order-user').value = user.userId;
-        document.getElementById('temp-user').value = user.userId;
+        document.getElementById('current-user').textContent = user.displayName || user.userId;
+
+        const roleBadge = document.getElementById('current-role');
+        roleBadge.hidden = false;
+        roleBadge.textContent = admin ? 'администратор' : 'читатель';
+        roleBadge.className = `role-badge ${admin ? 'admin' : 'user'}`;
+
+        document.querySelectorAll('.admin-only').forEach(el => { el.hidden = !admin; });
+        document.querySelectorAll('.user-only').forEach(el => { el.hidden = admin; });
+        document.getElementById('nav-stats').hidden = !admin;
+        document.getElementById('nav-orders').textContent = admin ? 'Выдачи' : 'Мои заказы';
+        document.getElementById('orders-title').textContent = admin ? 'Выдачи и заявки' : 'Мои заказы';
+        document.getElementById('set-name').textContent = user.displayName || user.userId;
         document.getElementById('set-user').textContent = user.userId;
+
         loadEvents();
         populateCategoryFilter();
         loadProfileTheme();
@@ -532,6 +599,7 @@
     async function register(event) {
         event.preventDefault();
         const userId = document.getElementById('register-user').value.trim().toLowerCase();
+        const displayName = document.getElementById('register-name').value.trim();
         const password = document.getElementById('register-password').value;
         const confirmation = document.getElementById('register-password-confirm').value;
         if (password !== confirmation) {
@@ -542,7 +610,25 @@
             await api('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, password })
+                body: JSON.stringify({ userId, displayName, password })
+            }, false);
+            await establishSession(userId, password);
+        } catch (error) {
+            document.getElementById('auth-error').textContent = error.message;
+        }
+    }
+
+    async function registerAdmin(event) {
+        event.preventDefault();
+        const userId = document.getElementById('admin-user').value.trim().toLowerCase();
+        const displayName = document.getElementById('admin-name').value.trim();
+        const password = document.getElementById('admin-password').value;
+        const adminCode = document.getElementById('admin-code').value;
+        try {
+            await api('/api/auth/register-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, displayName, password, adminCode })
             }, false);
             await establishSession(userId, password);
         } catch (error) {
@@ -611,7 +697,7 @@
                     <td>${e.viewCount}</td>
                     <td class="actions">
                         <button class="btn btn-primary btn-sm" onclick="openBook('${e.id}', this)">Открыть</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')">Удалить</button>
+                        ${isAdminUser() ? `<button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')">Удалить</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -822,45 +908,82 @@
         showOrderFormMessage(`Доступно копий: ${copies}`, 'success');
     }
 
+    let ordersCache = [];
+
     async function loadOrders() {
+        const admin = isAdminUser();
         const [orders, evts] = await Promise.all([
             api('/api/orders'),
             loadAllEventsForSelects()
         ]);
+        ordersCache = orders;
 
-        const sel = document.getElementById('order-event');
-        sel.innerHTML = evts.map(e => `
-                <option value="${e.id}" data-copies="${e.availableCopies}">
-                    ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
-                </option>
-            `).join('');
-        document.getElementById('order-form').style.display = evts.length ? 'flex' : 'none';
-        updateOrderAvailability();
+        const form = document.getElementById('order-form');
+        if (admin) {
+            const sel = document.getElementById('order-event');
+            sel.innerHTML = evts.map(e => `
+                    <option value="${e.id}" data-copies="${e.availableCopies}">
+                        ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
+                    </option>
+                `).join('');
 
+            readersCache = await api('/api/users');
+            const readerSelect = document.getElementById('order-reader');
+            readerSelect.innerHTML = readersCache.map(r =>
+                `<option value="${esc(r.userId)}" title="${esc(r.userId)}">${esc(r.displayName)}</option>`).join('');
+
+            form.hidden = false;
+            form.style.display = (evts.length && readersCache.length) ? 'flex' : 'none';
+            updateOrderAvailability();
+        } else {
+            form.hidden = true;
+            form.style.display = 'none';
+        }
+
+        renderOrders();
+    }
+
+    function renderOrders() {
         const tbody = document.getElementById('orders-body');
-        const statusBadge = s => `<span class="badge badge-${s.toLowerCase()}">${ORDER_STATUS_LABELS[s] || s}</span>`;
-        const evTitle = id => { const e = evts.find(x => x.id === id); return e ? esc(e.title) : id.slice(0,8); };
+        const admin = isAdminUser();
+        const onlyMine = admin && document.getElementById('orders-only-mine').checked;
+        let orders = ordersCache;
+        if (onlyMine) {
+            orders = orders.filter(o => !o.issuedById || o.issuedById === currentUser.userId);
+        }
 
-        if (!orders.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Событий пока нет</td></tr>'; return; }
+        const statusBadge = s => `<span class="badge badge-${s.toLowerCase()}">${ORDER_STATUS_LABELS[s] || s}</span>`;
+        const evTitle = id => { const e = eventsCache.find(x => x.id === id); return e ? esc(e.title) : id.slice(0,8); };
+
+        if (!orders.length) {
+            tbody.innerHTML = `<tr><td colspan="${admin ? 8 : 7}" class="empty">${admin ? 'Выдач и заявок пока нет' : 'У вас пока нет заказов'}</td></tr>`;
+            return;
+        }
         const fmt = value => value ? new Date(value).toLocaleString('ru-RU') : '—';
         tbody.innerHTML = orders.map(o => {
-            const mine = !currentUser || o.userId === currentUser.userId;
+            let actions = '';
+            if (admin) {
+                if (o.status === 'PENDING') {
+                    actions = `
+                        <button class="btn btn-success btn-sm" onclick="updateOrder('${o.id}','CONFIRMED')">Выдать</button>
+                        <button class="btn btn-danger btn-sm" onclick="updateOrder('${o.id}','CANCELLED')">Отменить</button>
+                    `;
+                } else if (o.status === 'CONFIRMED' && (!o.issuedById || o.issuedById === currentUser.userId)) {
+                    actions = `<button class="btn btn-primary btn-sm" onclick="returnBook('${o.id}')">Принять возврат</button>`;
+                }
+            } else if (o.status === 'PENDING') {
+                actions = `<button class="btn btn-danger btn-sm" onclick="updateOrder('${o.id}','CANCELLED')">Отменить</button>`;
+            }
             return `
                 <tr>
                     <td><small>${o.id.slice(0,8)}</small></td>
                     <td>${evTitle(o.eventId)}</td>
-                    <td>${esc(o.userId)}</td>
+                    <td class="reader-col" title="${esc(o.userId)}">${esc(o.readerName || o.userId)}</td>
                     <td>${statusBadge(o.status)}</td>
+                    <td>${o.issuedByName ? esc(o.issuedByName) : '—'}</td>
                     <td><small>${fmt(o.issuedAt)}</small></td>
                     <td><small>${fmt(o.returnedAt)}</small></td>
-                    <td class="actions">
-                        ${!mine ? '' : o.status === 'PENDING' ? `
-                            <button class="btn btn-success btn-sm" onclick="updateOrder('${o.id}','CONFIRMED')">Выдать</button>
-                            <button class="btn btn-danger btn-sm" onclick="updateOrder('${o.id}','CANCELLED')">Отменить</button>
-                        ` : o.status === 'CONFIRMED' ? `
-                            <button class="btn btn-primary btn-sm" onclick="returnBook('${o.id}')">Вернуть</button>
-                        ` : ''}
-                    </td>
+                    <td class="actions">${actions}</td>
                 </tr>`;
         }).join('');
     }
@@ -868,7 +991,9 @@
     async function createOrder() {
         const select = document.getElementById('order-event');
         const eventId = select.value;
+        const readerId = document.getElementById('order-reader').value;
         if (!eventId) { showOrderFormMessage('Выберите книгу', 'error'); return; }
+        if (!readerId) { showOrderFormMessage('Выберите читателя', 'error'); return; }
         if (selectedBookCopies() <= 0) {
             showOrderFormMessage('Копий книги больше нет', 'error');
             return;
@@ -877,17 +1002,18 @@
             await api('/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ eventId })
+                body: JSON.stringify({ eventId, userId: readerId })
             });
         } catch (error) {
             if (error.status === 409) {
                 showOrderFormMessage('Копий книги больше нет', 'error');
             } else {
-                showOrderFormMessage(error.message || 'Не удалось оформить событие', 'error');
+                showOrderFormMessage(error.message || 'Не удалось выдать книгу', 'error');
             }
             return;
         }
-        loadOrders();
+        await loadOrders();
+        showOrderFormMessage('Книга выдана читателю', 'success');
     }
 
     async function updateOrder(id, status) {
@@ -917,21 +1043,38 @@
 
     // --- TEMP REQUESTS ---
     let tempExpiredFired = {};
+    let readersCache = [];
 
     async function loadTempRequests() {
         tempExpiredFired = {};
         if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
+        const admin = isAdminUser();
         const [reqs, evts] = await Promise.all([
             api('/api/temp-requests'),
             loadAllEventsForSelects()
         ]);
+        if (admin) {
+            readersCache = await api('/api/users');
+        } else {
+            readersCache = [];
+        }
 
         const sel = document.getElementById('temp-event');
         sel.innerHTML = evts.map(e => `<option value="${e.id}">${esc(e.title)}</option>`).join('');
-        document.getElementById('temp-form').style.display = evts.length ? 'flex' : 'none';
+
+        const readerSelect = document.getElementById('temp-reader');
+        readerSelect.innerHTML = readersCache.map(r =>
+            `<option value="${esc(r.userId)}" title="${esc(r.userId)}">${esc(r.displayName)}</option>`).join('');
+
+        const form = document.getElementById('temp-form');
+        form.hidden = !admin;
+        form.style.display = (admin && evts.length && readersCache.length) ? 'flex' : 'none';
 
         const tbody = document.getElementById('temp-body');
-        if (!reqs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет временных заявок</td></tr>'; return; }
+        if (!reqs.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="empty">${admin ? 'Нет временных заявок' : 'У вас нет временных заявок'}</td></tr>`;
+            return;
+        }
 
         const evTitle = id => { const e = evts.find(x => x.id === id); return e ? esc(e.title) : id.slice(0,8); };
 
@@ -939,11 +1082,12 @@
                 <tr data-id="${r.id}" data-expires="${r.expiresAt}">
                     <td><small>${r.id.slice(0,8)}</small></td>
                     <td>${evTitle(r.eventId)}</td>
-                    <td>${esc(r.userId)}</td>
+                    <td title="${esc(r.userId)}">${esc(r.userName || r.userId)}</td>
+                    <td title="${r.createdById ? esc(r.createdById) : ''}">${r.createdByName ? esc(r.createdByName) : '—'}</td>
                     <td>${esc(r.purpose)}</td>
                     <td class="ttl-cell"></td>
                     <td class="actions">
-                        <button class="btn btn-danger btn-sm" onclick="deleteTempRequest('${r.id}')">Удалить</button>
+                        ${admin ? `<button class="btn btn-danger btn-sm" onclick="deleteTempRequest('${r.id}')">Удалить</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -983,9 +1127,10 @@
 
     async function createTempRequest() {
         const eventId = document.getElementById('temp-event').value;
+        const readerId = document.getElementById('temp-reader').value;
         const ttl = document.getElementById('temp-ttl').value;
-        if (!eventId) { alert('Заполните все поля'); return; }
-        await api(`/api/temp-requests?eventId=${eventId}&purpose=reservation&ttlSeconds=${ttl}`, {
+        if (!eventId || !readerId) { alert('Выберите книгу и читателя'); return; }
+        await api(`/api/temp-requests?eventId=${encodeURIComponent(eventId)}&userId=${encodeURIComponent(readerId)}&purpose=reservation&ttlSeconds=${encodeURIComponent(ttl)}`, {
             method: 'POST'
         });
         loadTempRequests();
@@ -1005,7 +1150,34 @@
         DELETE: 'Удаления'
     };
 
+    async function loadGlobalStatistics() {
+        const box = document.getElementById('global-stats-info');
+        box.innerHTML = '<span class="stats-loading">Загрузка...</span>';
+        let stats;
+        try {
+            stats = await api('/api/statistics/global');
+        } catch (error) {
+            box.innerHTML = `<span class="stats-loading">Не удалось загрузить статистику: ${esc(error.message || error)}</span>`;
+            return;
+        }
+        const topItems = (stats.topViewed || [])
+            .map(t => `<li>${esc(t.title)} — ${t.viewCount}</li>`)
+            .join('');
+        box.innerHTML = `
+                <div class="stats-group">
+                    <h3>Библиотека</h3>
+                    <div class="settings-row"><span class="settings-label">Книг в каталоге:</span><span class="settings-value">${stats.books}</span></div>
+                    <div class="settings-row"><span class="settings-label">Всего заказов:</span><span class="settings-value">${stats.orders}</span></div>
+                    <div class="settings-row"><span class="settings-label">Выдано книг:</span><span class="settings-value">${stats.issued}</span></div>
+                    <div class="settings-row"><span class="settings-label">Возвращено книг:</span><span class="settings-value">${stats.returned}</span></div>
+                    <div class="settings-row"><span class="settings-label">Читателей:</span><span class="settings-value">${stats.readers}</span></div>
+                </div>
+                ${topItems ? `<div class="stats-group"><h3>Часто просматриваемое</h3><ol class="stats-top-list">${topItems}</ol></div>` : ''}
+            `;
+    }
+
     async function loadStatistics() {
+        if (isAdminUser()) return;
         const box = document.getElementById('stats-info');
         box.innerHTML = '<span class="stats-loading">Загрузка...</span>';
         let stats;

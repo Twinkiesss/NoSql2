@@ -2,6 +2,7 @@ package ru.library.event.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import ru.library.event.model.CreateEventRequest;
@@ -28,6 +29,7 @@ public class EventController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Event> createEvent(@RequestBody CreateEventRequest request,
                                               Authentication authentication) {
         Event event = new Event(
@@ -43,6 +45,7 @@ public class EventController {
     }
 
     @GetMapping("/search/explain")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> explain(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) LocalDateTime from,
@@ -51,16 +54,19 @@ public class EventController {
     }
 
     @GetMapping("/analytics/actions")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> actionStatistics() {
         return ResponseEntity.ok(eventService.actionStatistics());
     }
 
     @PostMapping("/migrate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> migrate() {
         return ResponseEntity.ok(java.util.Map.of("migrated", eventService.migrate()));
     }
 
     @PostMapping("/replicate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> replicate() {
         eventService.replicate();
         return ResponseEntity.ok(java.util.Map.of("status", "replication started"));
@@ -79,6 +85,7 @@ public class EventController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Event> updateEvent(@PathVariable String id,
                                              @RequestBody CreateEventRequest request,
                                              Authentication authentication) {
@@ -96,6 +103,7 @@ public class EventController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteEvent(@PathVariable String id, Authentication authentication) {
         eventService.deleteEvent(id, authentication.getName());
         return ResponseEntity.ok().build();
@@ -122,6 +130,7 @@ public class EventController {
     }
 
     @PostMapping("/{id}/related")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RelatedObject> addRelated(@PathVariable String id,
                                                      @RequestBody RelatedObject object) {
         object.setEventId(id);
