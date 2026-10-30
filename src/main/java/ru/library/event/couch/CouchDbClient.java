@@ -16,6 +16,7 @@ public class CouchDbClient {
     private final RestClient client;
     private final ObjectMapper mapper;
     private final String database;
+    private final String baseUrl;
 
     public CouchDbClient(@Value("${couchdb.primary-url}") String url,
                          @Value("${couchdb.username}") String username,
@@ -24,12 +25,15 @@ public class CouchDbClient {
                          ObjectMapper mapper) {
         this.database = database;
         this.mapper = mapper;
+        this.baseUrl = url;
         this.client = RestClient.builder()
                 .baseUrl(url)
                 .defaultHeaders(h -> h.setBasicAuth(username, password))
                 .build();
     }
-
+    public String baseUrl() {
+        return baseUrl;
+    }
     public String database() {
         return database;
     }

@@ -18,8 +18,20 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Optional<Order> findByIdForUpdate(@Param("id") String id);
 
     List<Order> findByUserIdOrderByCreatedAtDesc(String userId);
-    @Query("select o from Order o where (:userId is null or o.userId = :userId) and (:status is null or o.status = :status)")
-    Page<Order> search(@Param("userId") String userId, @Param("status") Order.Status status, Pageable pageable);
+
+    /**
+     * Пагинированный поиск заявок.
+     * Если userId == null — админ видит все; если задан — только заявки этого пользователя.
+     * status == null — без фильтра по статусу.
+     */
+    @Query("""
+            select o from Order o
+            where (:userId is null or o.userId = :userId)
+              and (:status is null or o.status = :status)
+            """)
+    Page<Order> search(@Param("userId") String userId,
+                       @Param("status") Order.Status status,
+                       Pageable pageable);
 
     long countByStatus(Order.Status status);
 

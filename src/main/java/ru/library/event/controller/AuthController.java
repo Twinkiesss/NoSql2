@@ -44,7 +44,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(Authentication authentication) {
-        return ResponseEntity.ok(authService.currentUser(authentication.getName(), authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")) ? "ADMIN" : "USER"));
+        // Роль уже берётся из БД в AuthService.toResponse(...)
+        return ResponseEntity.ok(authService.currentUser(authentication.getName()));
     }
 }

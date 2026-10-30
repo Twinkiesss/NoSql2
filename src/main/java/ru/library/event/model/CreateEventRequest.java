@@ -3,6 +3,7 @@ package ru.library.event.model;
 import java.util.List;
 
 public class CreateEventRequest {
+    private String type = "book";
     private String title;
     private String description;
     private String author;
@@ -11,6 +12,8 @@ public class CreateEventRequest {
     private double rating;
     private List<String> genres;
 
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type == null || type.isBlank() ? "book" : type; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }

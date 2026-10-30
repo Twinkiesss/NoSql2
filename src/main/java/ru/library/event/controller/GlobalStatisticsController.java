@@ -1,10 +1,7 @@
 package ru.library.event.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.library.event.model.GlobalStatisticsResponse;
 import ru.library.event.service.GlobalStatisticsService;
 
@@ -20,7 +17,8 @@ public class GlobalStatisticsController {
 
     @GetMapping("/global")
     @PreAuthorize("hasRole('ADMIN')")
-    public GlobalStatisticsResponse getGlobalStatistics() {
-        return statisticsService.getStatistics();
+    public GlobalStatisticsResponse getGlobalStatistics(
+            @RequestParam(defaultValue = "false") boolean refresh) {
+        return statisticsService.getStatistics(refresh);
     }
 }

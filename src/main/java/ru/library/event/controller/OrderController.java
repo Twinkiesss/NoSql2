@@ -1,6 +1,5 @@
 package ru.library.event.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -8,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.library.event.model.CreateOrderRequest;
 import ru.library.event.model.Order;
 import ru.library.event.model.OrderResponse;
+import ru.library.event.model.PageResponse;
 import ru.library.event.service.OrderService;
 
 import java.util.List;
@@ -39,11 +39,25 @@ public class OrderController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * GET /api/orders?status=&sort=createdAt&direction=desc&page=0&size=10
+     * Для читателя userId подставляется автоматически (он видит только свои).
+     */
     @GetMapping
-    public ResponseEntity<List<OrderResponse>> getAllOrders(Authentication authentication) {
-        return ResponseEntity.ok(orderService.getOrders(authentication.getName(), isAdmin(authentication)).stream()
-                .map(OrderResponse::from)
-                .toList());
+    public ResponseEntity<PageResponse<OrderResponse>> getAllOrders(
+            @RequestParam(required = false) Order.Status status,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        boolean descending = !"asc".equalsIgnoreCase(direction);
+        PageResponse<Order> pageResult = orderService.searchOrders(
+                authentication.getName(), isAdmin(authentication),
+                status, sort, descending, page, size);
+        List<OrderResponse> items = pageResult.items().stream().map(OrderResponse::from).toList();
+        return ResponseEntity.ok(PageResponse.of(
+                items, pageResult.total(), pageResult.page(), pageResult.size()));
     }
 
     @PutMapping("/{id}/status")
@@ -51,7 +65,7 @@ public class OrderController {
                                                            @RequestParam Order.Status status,
                                                            Authentication auth) {
         Order updated = orderService.updateOrderStatus(
-                id, auth.getName(), isAdmin(authentication), status, isAdmin(auth));
+                id, auth.getName(), isAdmin(auth), status);
         return ResponseEntity.ok(OrderResponse.from(updated));
     }
 
@@ -60,6 +74,13 @@ public class OrderController {
     public ResponseEntity<OrderResponse> returnBook(@PathVariable String id, Authentication authentication) {
         return ResponseEntity.ok(OrderResponse.from(
                 orderService.returnBook(id, authentication.getName(), true)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteOrder(@PathVariable String id, Authentication authentication) {
+        orderService.deleteOrder(id, isAdmin(authentication));
+        return ResponseEntity.ok().build();
     }
 
     private static boolean isAdmin(Authentication authentication) {
