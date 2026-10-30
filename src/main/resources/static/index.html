@@ -283,7 +283,7 @@
                         <label>Книга</label>
                         <select id="order-event" onchange="updateOrderAvailability()"></select>
                     </div>
-                    <div class="form-group admin-only">
+                    <div class="form-group admin-only" id="order-reader-group">
                         <label>Читатель</label>
                         <select id="order-reader"></select>
                     </div>
@@ -295,6 +295,7 @@
                         <input type="checkbox" id="orders-only-mine" onchange="renderOrders()" />
                         Показывать только мои и без админа
                     </label>
+
                 </div>
                 <table>
                     <thead>
@@ -917,29 +918,22 @@
             loadAllEventsForSelects()
         ]);
         ordersCache = orders;
-
         const form = document.getElementById('order-form');
+        const sel = document.getElementById('order-event');
+        sel.innerHTML = evts.map(e => `
+                <option value="${e.id}" data-copies="${e.availableCopies}">
+                    ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
+                </option>
+            `).join('');
         if (admin) {
-            const sel = document.getElementById('order-event');
-            sel.innerHTML = evts.map(e => `
-                    <option value="${e.id}" data-copies="${e.availableCopies}">
-                        ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
-                    </option>
-                `).join('');
-
             readersCache = await api('/api/users');
             const readerSelect = document.getElementById('order-reader');
             readerSelect.innerHTML = readersCache.map(r =>
                 `<option value="${esc(r.userId)}" title="${esc(r.userId)}">${esc(r.displayName)}</option>`).join('');
-
-            form.hidden = false;
-            form.style.display = (evts.length && readersCache.length) ? 'flex' : 'none';
-            updateOrderAvailability();
-        } else {
-            form.hidden = true;
-            form.style.display = 'none';
         }
-
+        form.hidden = false;
+        form.style.display = evts.length ? 'flex' : 'none';
+        updateOrderAvailability();
         renderOrders();
     }
 
@@ -971,7 +965,7 @@
                 } else if (o.status === 'CONFIRMED' && (!o.issuedById || o.issuedById === currentUser.userId)) {
                     actions = `<button class="btn btn-primary btn-sm" onclick="returnBook('${o.id}')">Принять возврат</button>`;
                 }
-            } else if (o.status === 'PENDING') {
+            } else if (o.status === 'PENDING' && o.userId === currentUser.userId) {
                 actions = `<button class="btn btn-danger btn-sm" onclick="updateOrder('${o.id}','CANCELLED')">Отменить</button>`;
             }
             return `
@@ -991,29 +985,31 @@
     async function createOrder() {
         const select = document.getElementById('order-event');
         const eventId = select.value;
-        const readerId = document.getElementById('order-reader').value;
+        const admin = isAdminUser();
+        const readerId = admin ? document.getElementById('order-reader').value : currentUser.userId;
         if (!eventId) { showOrderFormMessage('Выберите книгу', 'error'); return; }
-        if (!readerId) { showOrderFormMessage('Выберите читателя', 'error'); return; }
+        if (admin && !readerId) { showOrderFormMessage('Выберите читателя', 'error'); return; }
         if (selectedBookCopies() <= 0) {
             showOrderFormMessage('Копий книги больше нет', 'error');
             return;
         }
         try {
+            const body = admin ? { eventId, userId: readerId } : { eventId };
             await api('/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ eventId, userId: readerId })
+                body: JSON.stringify(body)
             });
         } catch (error) {
             if (error.status === 409) {
                 showOrderFormMessage('Копий книги больше нет', 'error');
             } else {
-                showOrderFormMessage(error.message || 'Не удалось выдать книгу', 'error');
+                showOrderFormMessage(error.message || 'Не удалось создать заявку', 'error');
             }
             return;
         }
         await loadOrders();
-        showOrderFormMessage('Книга выдана читателю', 'success');
+        showOrderFormMessage('Заявка создана', 'success');
     }
 
     async function updateOrder(id, status) {
