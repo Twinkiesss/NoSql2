@@ -63,6 +63,10 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border-soft); font-size: 14px; }
         th { background: var(--th-bg); font-weight: 600; color: var(--label); }
+        th.clickable { cursor: pointer; }
+        th.clickable::after { content: "▾"; margin-left: 4px; font-size: 10px; }
+        th.sorted-asc::after { content: "▲"; color: #27ae60; }
+        th.sorted-desc::after { content: "▼"; color: #e74c3c; }
         tr:hover { background: var(--row-hover); }
         .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
         .badge-pending { background: #fff3cd; color: #856404; }
@@ -225,11 +229,11 @@
                 <table>
                     <thead>
                     <tr>
-                        <th>Название</th>
-                        <th>Автор</th>
-                        <th>Категория</th>
-                        <th>Копии</th>
-                        <th>Просмотры</th>
+                        <th data-sort="title">Название</th>
+                        <th data-sort="author">Автор</th>
+                        <th data-sort="category">Категория</th>
+                        <th data-sort="availableCopies">Копии</th>
+                        <th data-sort="viewCount">Просмотры</th>
                         <th>Действия</th>
                     </tr>
                     </thead>
@@ -262,12 +266,6 @@
                     <button id="order-submit" class="btn btn-success" onclick="createOrder()">Создать заявку</button>
                 </div>
                 <div id="order-form-message" class="form-message"></div>
-                <div class="catalog-filters admin-only" id="orders-filter-row" hidden>
-                    <label class="filter-check">
-                        <input type="checkbox" id="orders-only-mine" onchange="renderOrders()" />
-                        Показывать только мои и без админа
-                    </label>
-                </div>
                 <div class="toolbar" id="orders-toolbar">
                     <div class="form-group"><label for="order-status-filter">Статус</label><select id="order-status-filter" onchange="changeOrderFilter()"><option value="">Все статусы</option><option value="PENDING">Ожидает</option><option value="CONFIRMED">Выдана</option><option value="COMPLETED">Возвращена</option><option value="CANCELLED">Отменена</option></select></div>
                     <div class="form-group"><label for="order-sort">Сортировка</label><select id="order-sort" onchange="changeOrderFilter()"><option value="createdAt">По дате создания</option><option value="updatedAt">По последнему изменению</option><option value="status">По статусу</option><option value="userId">По пользователю</option><option value="eventId">По ID книги</option></select></div>
@@ -277,13 +275,13 @@
                 <table>
                     <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Книга</th>
-                        <th class="reader-col">Читатель</th>
-                        <th>Статус</th>
-                        <th>Админ</th>
-                        <th>Выдача</th>
-                        <th>Возврат</th>
+                        <th data-sort="id">ID</th>
+                        <th data-sort="eventId">Книга</th>
+                        <th class="reader-col" data-sort="userId">Читатель</th>
+                        <th data-sort="status">Статус</th>
+                        <th data-sort="issuedByName">Админ</th>
+                        <th data-sort="issuedAt">Выдача</th>
+                        <th data-sort="returnedAt">Возврат</th>
                         <th>Действия</th>
                     </tr>
                     </thead>
@@ -382,24 +380,19 @@
                 </div>
                 <form id="password-form" class="settings-form" onsubmit="return changePassword(event)">
                     <div class="form-group">
-                        <label>Уведомления</label>
-                        <select id="set-notif">
-                            <option value="true">Вкл</option>
-                            <option value="false">Выкл</option>
-                        </select>
+                        <label>Текущий пароль</label>
+                        <input id="current-password" type="password" required />
                     </div>
                     <div class="form-group">
-                        <label>Результатов на страницу</label>
-                        <input id="set-perpage" type="number" />
+                        <label>Новый пароль</label>
+                        <input id="new-password" type="password" required />
                     </div>
                     <div class="form-group">
-                        <label>Тема</label>
-                        <select id="set-theme">
-                            <option value="LIGHT">Светлая</option>
-                            <option value="DARK">Тёмная</option>
-                        </select>
+                        <label>Повторите новый пароль</label>
+                        <input id="confirm-new-password" type="password" required />
                     </div>
-                    <button class="btn btn-success" onclick="saveSettings()">Сохранить</button>
+                    <button class="btn btn-success" onclick="changePassword()">Сменить пароль</button>
+                    <div id="password-form-message" class="form-message"></div>
                 </form>
             </div>
         </div>
@@ -549,7 +542,6 @@
         document.getElementById('order-user').value = user.userId;
         document.getElementById('nav-stats').hidden = !admin;
         document.getElementById('stats-card').hidden = admin;
-        document.getElementById('orders-filter-row').hidden = !admin;
         loadEvents();
         loadProfileTheme();
         if (!admin) loadStatistics(false);
@@ -755,7 +747,7 @@
             const count = await api(`/api/events/${id}/views`, { method: 'POST' });
             document.querySelector(`[onclick="incView('${id}']"`).textContent = count;
             } catch (error) {
-                // silent on 401 etc.
+                // silent
             }
         }
 
@@ -825,7 +817,7 @@
                 if (admin) html += `<button class="btn btn-success btn-sm" onclick="updateOrder('${o.id}','CONFIRMED')">Выдать</button>`;
             if (admin || isMine) html += `<button class="btn btn-danger btn-sm" onclick="updateOrder('${o.id}','CANCELLED')">Отменить</button>`;
         } else if (o.status === 'CONFIRMED') {
-            if (admin) html += `<button class="btn btn-primary btn-sm" onclick="returnBook('${o.id}')">Вернуть</button>`;
+            if (admin) html += `<button class="btn btn-primary btn-sm" onclick="returnBook('${o.id}')">Принять возврат</button>`;
         }
         if (admin && o.status !== 'CONFIRMED') {
             html += `<button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">Удалить</button>`;
@@ -842,9 +834,9 @@
         const to = Math.min(total, (pageData.page + 1) * size);
         box.innerHTML = `
                 <span>${from}–${to} из ${total}</span>
-                <button class="btn btn-primary btn-sm" ${pageData.page === 0 ? 'disabled' : ''} onclick="changeOrdersPage(-1)">← Назад</button>
+                <button class="btn btn-primary btn-sm" ${pageData.page === 0 ? 'disabled' : ''} onclick="changeOrdersPage(-1)">‹ Пред</button>
                 <span>Стр. ${pageData.page + 1} / ${Math.max(1, ordersTotalPages)}</span>
-                <button class="btn btn-primary btn-sm" ${pageData.page + 1 >= ordersTotalPages ? 'disabled' : ''} onclick="changeOrdersPage(1)">Вперёд →</button>`;
+                <button class="btn btn-primary btn-sm" ${pageData.page + 1 >= ordersTotalPages ? 'disabled' : ''} onclick="changeOrdersPage(1)">След ›</button>`;
     }
 
     function changeOrdersPage(delta) {
@@ -859,7 +851,7 @@
 
     async function loadOrders() {
         const admin = isAdminUser();
-        document.getElementById('orders-title').textContent = admin ? 'Все заявки' : 'Мои заказы';
+        document.getElementById('orders-title').textContent = admin ? 'Выдачи и заявки' : 'Мои заказы';
         document.getElementById('orders-filter-row').hidden = !admin;
 
         if (admin) {
@@ -910,7 +902,7 @@
         const fmt = v => v ? new Date(v).toLocaleString('ru-RU') : '—';
 
         if (!orders.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty">Заявок нет</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="8" class="empty">${admin ? 'Выдач и заявок пока нет' : 'У вас пока нет заказов'}</td></tr>`;
         } else {
             tbody.innerHTML = orders.map(o => {
                 const isMine = o.userId === currentUser.userId;
@@ -967,12 +959,12 @@
         try {
             await api(`/api/orders/${id}/status?status=${status}`, { method: 'PUT' });
         } catch (error) {
-            showOrderFormMessage(error.message || 'Не удалось изменить статус события', 'error');
+            showOrderFormMessage(error.message || 'Не удалось изменить статус', 'error');
             return;
         }
         await loadOrders();
         showOrderFormMessage(
-            status === 'CONFIRMED' ? 'Книга выдана' : 'Заявка отменена, резерв снят',
+            status === 'CONFIRMED' ? 'Книга выдана' : 'Заявка отменена',
             'success'
         );
     }
@@ -981,7 +973,7 @@
         try {
             await api(`/api/orders/${id}/return`, { method: 'POST' });
         } catch (error) {
-            showOrderFormMessage(error.message || 'Не удалось вернуть книгу', 'error');
+            showOrderFormMessage(error.message || 'Не удалось принять возврат', 'error');
             return;
         }
         await loadOrders();
@@ -1077,7 +1069,6 @@
         });
         if (anyExpired) {
             if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
-            // avoid recursion spam — bкенд already filters expired
         }
     }
 
@@ -1200,10 +1191,10 @@
     function renderUserStats(s) {
         const box = document.getElementById('stats-info');
         box.innerHTML = `
-                <div class="settings-row"><span class="settings-label">Выдано:</span><span class="settings-value">${s.orders.issued}</span></div>
+                <div class="settings-row"><span class="settings-label">Взято всего:</span><span class="settings-value">${s.orders.issued}</span></div>
                 <div class="settings-row"><span class="settings-label">Возвращено:</span><span class="settings-value">${s.orders.returned}</span></div>
-                <div class="settings-row"><span class="settings-label">Активных:</span><span class="settings-value">${s.orders.active}</span></div>
-                <div class="settings-row"><span class="settings-label">% возврата:</span><span class="settings-value">${s.orders.returnRatePercent}%</span></div>`;
+                <div class="settings-row"><span class="settings-label">% возврата:</span><span class="settings-value">${s.orders.returnRatePercent}%</span></div>
+                <div class="settings-row"><span class="settings-label">На руках сейчас:</span><span class="settings-value">${s.orders.active}</span></div>`;
     }
 
     async function loadSettings() {
@@ -1223,39 +1214,16 @@
         }
     }
 
-    async function saveSettings() {
-        if (!currentUser) return;
-        const userId = currentUser.userId;
-        const theme = document.getElementById('set-theme').value;
-        try {
-            const saved = await api(`/api/settings/${userId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    notificationsEnabled: document.getElementById('set-notif').value === 'true',
-                    maxResultsPerPage: parseInt(document.getElementById('set-perpage').value) || 20,
-                    theme
-                })
-            });
-            applyTheme(saved.theme);
-            sessionStorage.setItem(THEME_STORAGE_KEY, saved.theme);
-            loadSettings();
-        } catch (e) {
-            alert('Не удалось сохранить настройки: ' + e.message);
-        }
-    }
-
-    async function changePassword(event) {
-        event.preventDefault();
-        const current = document.getElementById('current-password')?.value;
-        const next = document.getElementById('new-password')?.value;
-        const confirmPass = document.getElementById('confirm-new-password')?.value;
+    async function changePassword() {
+        const current = document.getElementById('current-password').value;
+        const next = document.getElementById('new-password').value;
+        const confirmPass = document.getElementById('confirm-new-password').value;
         if (!current || !next || !confirmPass) {
-            alert('Заполните все поля');
+            showPasswordFormMessage('Заполните все поля', 'error');
             return;
         }
         if (next !== confirmPass) {
-            alert('Пароли не совпадают');
+            showPasswordFormMessage('Новые пароли не совпадают', 'error');
             return;
         }
         try {
@@ -1263,11 +1231,17 @@
                 method: 'POST',
                 body: JSON.stringify({ currentPassword: current, newPassword: next })
             });
-            alert('Пароль изменён');
+            showPasswordFormMessage('Пароль успешно изменён', 'success');
             document.getElementById('password-form').reset();
         } catch (e) {
-            alert('Ошибка смены пароля: ' + e.message);
+            showPasswordFormMessage('Ошибка: ' + e.message, 'error');
         }
+    }
+
+    function showPasswordFormMessage(text, type) {
+        const message = document.getElementById('password-form-message');
+        message.textContent = text;
+        message.className = `form-message ${type || ''}`;
     }
 </script>
 </body>
