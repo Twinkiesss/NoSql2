@@ -24,4 +24,10 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     @Query("select o.userId, count(o) from Order o group by o.userId order by count(o) desc")
     List<Object[]> countOrdersByUser();
+
+    long countByUserIdAndIssuedAtNotNull(String userId);
+
+    long countByUserIdAndReturnedAtNotNull(String userId);
+
+    long countByUserIdAndStatus(String userId, Order.Status status);
 }

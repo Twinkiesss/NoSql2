@@ -8,6 +8,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +36,12 @@ public class Event {
     @Column(nullable = false, updatable = false) private LocalDateTime createdAt;
     @Column(nullable = false) private LocalDateTime updatedAt;
     @Column private LocalDateTime lastChangedAt;
+
+    @Transient
+    private String rev;
+
+    @Transient
+    private String type = "book";
 
     public Event() {
         this.id = UUID.randomUUID().toString();
@@ -81,6 +88,12 @@ public class Event {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getLastChangedAt() { return lastChangedAt == null ? updatedAt : lastChangedAt; }
     public void setLastChangedAt(LocalDateTime lastChangedAt) { this.lastChangedAt = lastChangedAt; }
+
+    public String getRev() { return rev; }
+    public void setRev(String rev) { this.rev = rev; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 
     private void touch() {
         this.updatedAt = LocalDateTime.now();
