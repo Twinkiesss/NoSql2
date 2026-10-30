@@ -90,4 +90,7 @@ public class EtcdQueryCacheService {
             throw new IllegalStateException(e);
         }
     }
+    public com.fasterxml.jackson.databind.ObjectMapper mapper() {
+        return mapper;
+    }
 }

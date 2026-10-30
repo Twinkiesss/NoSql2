@@ -1,6 +1,8 @@
 package ru.library.event.repository;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +18,27 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Optional<Order> findByIdForUpdate(@Param("id") String id);
 
     List<Order> findByUserIdOrderByCreatedAtDesc(String userId);
+
+    /**
+     * Пагинированный поиск заявок.
+     * Если userId == null — админ видит все; если задан — только заявки этого пользователя.
+     * status == null — без фильтра по статусу.
+     */
+    @Query("""
+            select o from Order o
+            where (:userId is null or o.userId = :userId)
+              and (:status is null or o.status = :status)
+            """)
+    Page<Order> search(@Param("userId") String userId,
+                       @Param("status") Order.Status status,
+                       Pageable pageable);
+
+    long countByStatus(Order.Status status);
+
+    @Query("select o.userId, count(o) from Order o group by o.userId order by count(o) desc")
+    List<Object[]> countOrdersByUser();
+
+    long countByUserIdAndIssuedAtNotNull(String userId);
 
     List<Order> findAllByOrderByCreatedAtDesc();
 

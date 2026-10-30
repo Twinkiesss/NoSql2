@@ -14,24 +14,42 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class UserStatisticsService {
     private static final int TOP_VIEWED_LIMIT = 5;
+    private static final String CACHE_PREFIX = "stats:user:";
 
     private final OrderRepository orderRepository;
     private final CouchDbClient couch;
+    private final EtcdQueryCacheService cache;
 
-    public UserStatisticsService(OrderRepository orderRepository, CouchDbClient couch) {
+    public UserStatisticsService(OrderRepository orderRepository,
+                                 CouchDbClient couch,
+                                 EtcdQueryCacheService cache) {
         this.orderRepository = orderRepository;
         this.couch = couch;
+        this.cache = cache;
     }
 
-    public UserStatisticsResponse getStatistics(String userId) {
-        return new UserStatisticsResponse(userId,
+    public UserStatisticsResponse getStatistics(String userId, boolean refresh) {
+        String cacheKey = CACHE_PREFIX + userId;
+        if (!refresh) {
+            Optional<JsonNode> cached = cache.get(cacheKey);
+            if (cached.isPresent()) {
+                return cache.mapper().convertValue(cached.get(), UserStatisticsResponse.class);
+            }
+        }
+
+        UserStatisticsResponse response = new UserStatisticsResponse(
+                userId,
                 buildOrderStats(userId),
                 Map.of(),
                 buildTopViewed(userId));
+
+        cache.put(cacheKey, cache.mapper().valueToTree(response));
+        return response;
     }
 
     private OrderStats buildOrderStats(String userId) {
@@ -42,9 +60,6 @@ public class UserStatisticsService {
         return new OrderStats(issued, returned, returnRate, stats.getActive());
     }
 
-    /**
-     * Просмотры считаются вьюхой CouchDB, названия книг забираются одним batch-запросом.
-     */
     private List<TopViewedItem> buildTopViewed(String userId) {
         String startKey = couch.mapper().valueToTree(List.of(userId, "")).toString();
         String endKey = couch.mapper().valueToTree(List.of(userId, Map.of())).toString();

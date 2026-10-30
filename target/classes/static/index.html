@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Библиотека — Сервис заявок</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        :root {
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --muted: #999999;
+            --border: #eeeeee;
+            --border-soft: #f0f0f0;
+            --row-hover: #f8f9fa;
+            --th-bg: #fafafa;
+            --form-bg: #fafafa;
+            --label: #555555;
+            --input-bg: #ffffff;
+            --input-border: #dddddd;
+            --readonly-bg: #f2f2f2;
+            --readonly-text: #666666;
+            --shadow: 0 1px 3px rgba(0,0,0,.1);
+        }
+        body[data-theme="dark"] {
+            --bg: #14181d;
+            --card-bg: #1e242b;
+            --text: #e6e9ec;
+            --muted: #8b949e;
+            --border: #2b333c;
+            --border-soft: #262d35;
+            --row-hover: #232a32;
+            --th-bg: #232a32;
+            --form-bg: #1a2027;
+            --label: #b6c0c9;
+            --input-bg: #171d23;
+            --input-border: #333c46;
+            --readonly-bg: #232a32;
+            --readonly-text: #b6c0c9;
+            --shadow: 0 1px 3px rgba(0,0,0,.5);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
+        header { background: #2c3e50; color: #fff; padding: 16px 24px; }
+        .header-content { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        header h1 { font-size: 20px; font-weight: 600; }
+        .user-actions { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+        .user-actions button { background: #465867; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+        .user-actions button:hover { background: #566a7b; }
+        .user-actions .logout-btn { background: #c0392b; }
+        .user-actions .logout-btn:hover { background: #e74c3c; }
+        .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #f39c12; color: #1b1b1b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .role-badge.user { background: #3498db; color: #fff; }
+        nav { display: flex; gap: 4px; background: #34495e; padding: 0 max(24px, calc((100% - 1068px) / 2)); }
+        nav button { background: none; border: none; color: #95a5a6; padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent; transition: all .15s; }
+        nav button:hover { color: #ecf0f1; }
+        nav button.active { color: #fff; border-bottom-color: #3498db; }
+        main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+        .card { background: var(--card-bg); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .card-header h2 { font-size: 16px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border-soft); font-size: 14px; }
+        th { background: var(--th-bg); font-weight: 600; color: var(--label); }
+        th.clickable { cursor: pointer; }
+        th.clickable::after { content: "▾"; margin-left: 4px; font-size: 10px; }
+        th.sorted-asc::after { content: "▲"; color: #27ae60; }
+        th.sorted-desc::after { content: "▼"; color: #e74c3c; }
+        tr:hover { background: var(--row-hover); }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-confirmed { background: #d1ecf1; color: #0c5460; }
+        .badge-completed { background: #d4edda; color: #155724; }
+        .badge-cancelled { background: #f8d7da; color: #721c24; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: opacity .15s; }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: #3498db; color: #fff; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .actions { display: flex; gap: 6px; }
+        .empty { padding: 40px; text-align: center; color: var(--muted); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .form-row { display: flex; gap: 10px; align-items: end; padding: 16px 20px; background: var(--form-bg); border-top: 1px solid var(--border); }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 12px; font-weight: 600; color: var(--label); }
+        .form-group input, .form-group select, .form-group textarea { padding: 7px 10px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 13px; font-family: inherit; background: var(--input-bg); color: var(--text); }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #3498db; }
+        #event-form { flex-wrap: wrap; }
+        #event-form .form-group { flex: 1 1 150px; }
+        #event-form .form-group.wide { flex: 2 1 260px; }
+        #event-form .form-group.description { flex: 3 1 360px; }
+        #event-form textarea { resize: vertical; min-height: 36px; }
+        #event-form button { align-self: flex-end; }
+        .form-message { flex: 1 1 100%; min-height: 16px; color: var(--muted); font-size: 12px; }
+        .form-message.error { color: #e74c3c; }
+        .form-message.success { color: #27ae60; }
+        .view-btn { cursor: pointer; color: #3498db; font-weight: 600; }
+        .view-btn:hover { text-decoration: underline; }
+        body[data-role="user"] .reader-col { display: none; }
+        body[data-role="user"] .admin-only { display: none !important; }
+        body[data-role="admin"] .user-only { display: none !important; }
+        .auth-screen { position: fixed; inset: 0; z-index: 1000; background: rgba(44,62,80,.96); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-card { width: 100%; max-width: 380px; background: var(--card-bg); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.3); padding: 24px; }
+        .auth-card h2 { font-size: 20px; margin-bottom: 16px; text-align: center; }
+        .auth-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+        .auth-tabs button { flex: 1; padding: 9px; border: 1px solid var(--input-border); background: var(--form-bg); border-radius: 5px; cursor: pointer; color: var(--text); }
+        .auth-tabs button.active { background: #3498db; color: #fff; border-color: #3498db; }
+        .auth-form { display: flex; flex-direction: column; gap: 8px; }
+        .auth-form label { font-size: 12px; font-weight: 600; color: var(--label); }
+        .auth-form input { padding: 9px 10px; border: 1px solid var(--input-border); border-radius: 5px; font-size: 14px; background: var(--input-bg); color: var(--text); }
+        .auth-form button { margin-top: 6px; padding: 10px; border: none; border-radius: 5px; background: #3498db; color: #fff; font-weight: 600; cursor: pointer; }
+        .auth-error { min-height: 20px; margin-top: 12px; color: #e74c3c; font-size: 13px; text-align: center; }
+        .input-readonly { background: var(--readonly-bg); color: var(--readonly-text); }
+        .toolbar { display:flex; flex-wrap:wrap; gap:10px; padding:14px 20px; background:var(--form-bg); border-bottom:1px solid var(--border); align-items:end; }
+        .toolbar .form-group { min-width:130px; }
+        .pagination { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 20px; color:var(--muted); font-size:13px; }
+        .pagination button:disabled { opacity:.4; cursor:not-allowed; }
+        .stats-panel { margin:14px 20px; border:1px solid var(--border); border-radius:7px; padding:12px; }
+        .stats-content { padding-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+        .stat-tile { background:var(--form-bg); border-radius:6px; padding:12px; }
+        .stat-tile strong { display:block; font-size:22px; margin-top:5px; }
+        .genre-chip { display:inline-block; margin:2px 3px 2px 0; padding:2px 7px; border-radius:10px; background:#e8eef5; color:#34495e; font-size:11px; }
+        @media(max-width:700px){ .form-row,.toolbar { align-items:stretch; flex-direction:column; } table { min-width:760px; } .card { overflow-x:auto; } }
+    </style>
+</head>
+<body>
+<div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+        <h2>Библиотека — Вход</h2>
+        <div class="auth-tabs">
+            <button id="login-tab" class="active" type="button" onclick="setAuthMode('login')">Вход</button>
+            <button id="register-tab" type="button" onclick="setAuthMode('register')">Регистрация</button>
+            <button id="admin-register-tab" type="button" onclick="setAuthMode('admin')">Админ</button>
+        </div>
+        <form id="login-form" class="auth-form" onsubmit="login(event)">
+            <label for="login-user">Логин</label>
+            <input id="login-user" autocomplete="username" pattern="[A-Za-z0-9_-]{3,64}" required />
+            <label for="login-password">Пароль</label>
+            <input id="login-password" type="password" autocomplete="current-password" minlength="6" maxlength="72" required />
+            <button type="submit">Войти</button>
+        </form>
+        <form id="register-form" class="auth-form" onsubmit="register(event)" hidden>
+            <label for="register-user">Логин</label>
+            <input id="register-user" autocomplete="username" pattern="[A-Za-z0-9_-]{3,64}" required />
+            <label for="register-name">Имя</label>
+            <input id="register-name" maxlength="100" minlength="2" required />
+            <label for="register-password">Пароль</label>
+            <input id="register-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+            <label for="register-password-confirm">Повторите пароль</label>
+            <input id="register-password-confirm" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+            <button type="submit">Зарегистрироваться</button>
+        </form>
+        <form id="admin-register-form" class="auth-form" onsubmit="registerAdmin(event)" hidden>
+            <label for="admin-user">Логин</label>
+            <input id="admin-user" autocomplete="username" pattern="[A-Za-z0-9_\-]{3,64}" required />
+            <label for="admin-name">Имя</label>
+            <input id="admin-name" maxlength="100" minlength="2" required />
+            <label for="admin-password">Пароль</label>
+            <input id="admin-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" required />
+            <label for="admin-code">Код администратора</label>
+            <input id="admin-code" type="password" autocomplete="off" required />
+            <button type="submit">Создать администратора</button>
+        </form>
+        <div id="auth-error" class="auth-error"></div>
+    </div>
+</div>
+<header>
+    <div class="header-content">
+        <h1>Библиотека — Сервис заявок</h1>
+        <div id="user-actions" class="user-actions" hidden>
+            <span id="current-user"></span>
+            <span id="current-role" class="role-badge user">читатель</span>
+            <button id="theme-toggle" type="button" onclick="toggleTheme()">Тёмная тема</button>
+            <button type="button" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+</header>
+<div id="app-content" hidden>
+    <nav>
+        <button class="active" onclick="showSection('events', this)">Каталог</button>
+        <button id="nav-orders" onclick="showSection('orders', this)">Мои заказы</button>
+        <button id="nav-temp" onclick="showSection('temp', this)">Временные заявки</button>
+        <button id="nav-stats" onclick="showSection('stats', this)" hidden>Статистика</button>
+        <button onclick="showSection('settings', this)">Настройки</button>
+    </nav>
+    <main>
+        <!-- EVENTS -->
+        <div id="events" class="section active">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Каталог книг</h2>
+                    <button class="btn btn-primary" onclick="loadEvents()">Обновить</button>
+                </div>
+                <form class="form-row admin-only" id="event-form" novalidate>
+                    <div class="form-group wide">
+                        <label for="event-title">Название</label>
+                        <input id="event-title" maxlength="255" placeholder="Например, Мастер и Маргарита" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="event-author">Автор</label>
+                        <input id="event-author" maxlength="255" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="event-category">Категория</label>
+                        <input id="event-category" maxlength="255" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="event-copies">Копий</label>
+                        <input id="event-copies" type="number" min="0" step="1" value="1" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="event-rating">Рейтинг (0–5)</label>
+                        <input id="event-rating" type="number" min="0" max="5" step="0.1" value="0" />
+                    </div>
+                    <div class="form-group wide">
+                        <label for="event-genres">Жанры (через запятую)</label>
+                        <input id="event-genres" maxlength="500" placeholder="Фантастика, роман, драма" />
+                    </div>
+                    <div class="form-group description">
+                        <label for="event-description">Описание</label>
+                        <textarea id="event-description" maxlength="2000" placeholder="Краткое описание книги"></textarea>
+                    </div>
+                    <button class="btn btn-success" type="submit">Добавить книгу</button>
+                    <div id="event-form-message" class="form-message"></div>
+                </form>
+                <table>
+                    <thead>
+                    <tr>
+                        <th data-sort="title">Название</th>
+                        <th data-sort="author">Автор</th>
+                        <th data-sort="category">Категория</th>
+                        <th data-sort="availableCopies">Копии</th>
+                        <th data-sort="viewCount">Просмотры</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody id="events-body"></tbody>
+                </table>
+                <div id="book-details" class="form-message"></div>
+            </div>
+        </div>
+
+        <!-- ORDERS -->
+        <div id="orders" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2 id="orders-title">Мои заказы</h2>
+                    <button class="btn btn-primary" onclick="loadOrders()">Обновить</button>
+                </div>
+                <div class="form-row" id="order-form" hidden>
+                    <div class="form-group">
+                        <label>Книга</label>
+                        <select id="order-event" onchange="updateOrderAvailability()"></select>
+                    </div>
+                    <div class="form-group user-only">
+                        <label>Пользователь</label>
+                        <input id="order-user" class="input-readonly" readonly />
+                    </div>
+                    <div class="form-group admin-only">
+                        <label for="order-reader">Читатель</label>
+                        <select id="order-reader"></select>
+                    </div>
+                    <button id="order-submit" class="btn btn-success" onclick="createOrder()">Создать заявку</button>
+                </div>
+                <div id="order-form-message" class="form-message"></div>
+                <div class="toolbar" id="orders-toolbar">
+                    <div class="form-group"><label for="order-status-filter">Статус</label><select id="order-status-filter" onchange="changeOrderFilter()"><option value="">Все статусы</option><option value="PENDING">Ожидает</option><option value="CONFIRMED">Выдана</option><option value="COMPLETED">Возвращена</option><option value="CANCELLED">Отменена</option></select></div>
+                    <div class="form-group"><label for="order-sort">Сортировка</label><select id="order-sort" onchange="changeOrderFilter()"><option value="createdAt">По дате создания</option><option value="updatedAt">По последнему изменению</option><option value="status">По статусу</option><option value="userId">По пользователю</option><option value="eventId">По ID книги</option></select></div>
+                    <div class="form-group"><label for="order-direction">Порядок</label><select id="order-direction" onchange="changeOrderFilter()"><option value="desc">По убыванию</option><option value="asc">По возрастанию</option></select></div>
+                    <div class="form-group"><label for="order-page-size">На странице</label><select id="order-page-size" onchange="changeOrderFilter()"><option>5</option><option selected>10</option><option>20</option><option>50</option></select></div>
+                </div>
+                <table>
+                    <thead>
+                    <tr>
+                        <th data-sort="id">ID</th>
+                        <th data-sort="eventId">Книга</th>
+                        <th class="reader-col" data-sort="userId">Читатель</th>
+                        <th data-sort="status">Статус</th>
+                        <th data-sort="issuedByName">Админ</th>
+                        <th data-sort="issuedAt">Выдача</th>
+                        <th data-sort="returnedAt">Возврат</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody id="orders-body"></tbody>
+                </table>
+                <div class="pagination" id="orders-pagination"></div>
+                <details class="stats-panel" id="order-stats-panel">
+                    <summary>Статистика заявок (загрузка по запросу)</summary>
+                    <div id="order-stats-content" class="stats-content"><span>Раскройте блок, чтобы загрузить статистику из БД</span></div>
+                    <div style="padding-top:10px"><button class="btn btn-primary btn-sm" onclick="loadOrderStats(true)">Обновить из БД</button></div>
+                </details>
+            </div>
+        </div>
+
+        <!-- TEMP REQUESTS -->
+        <div id="temp" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Временные заявки (Lease TTL)</h2>
+                    <button class="btn btn-primary" onclick="loadTempRequests()">Обновить</button>
+                </div>
+                <form class="form-row admin-only" id="temp-form" style="display:none;">
+                    <div class="form-group">
+                        <label>Книга</label>
+                        <select id="temp-event"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Читатель</label>
+                        <select id="temp-reader"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>TTL (сек)</label>
+                        <input id="temp-ttl" type="number" value="30" min="5" max="300" />
+                    </div>
+                    <button class="btn btn-success" onclick="createTempRequest()">Создать</button>
+                </form>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Книга</th>
+                        <th>Читатель</th>
+                        <th>Кто создал</th>
+                        <th>Цель</th>
+                        <th>Осталось</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody id="temp-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- GLOBAL STATISTICS -->
+        <div id="stats" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Статистика библиотеки</h2>
+                    <button class="btn btn-primary" onclick="loadGlobalStatistics()">Обновить</button>
+                </div>
+                <div class="settings-info" id="global-stats-info">
+                    <span class="stats-loading">Загрузка...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="settings" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Настройки пользователя</h2>
+                </div>
+                <div class="settings-info">
+                    <div class="settings-row">
+                        <span class="settings-label">Имя:</span>
+                        <span id="set-name" class="settings-value"></span>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-label">Логин:</span>
+                        <span id="set-user" class="settings-value"></span>
+                    </div>
+                    <button class="btn btn-primary" onclick="loadSettings()">Загрузить</button>
+                </div>
+            </div>
+            <div class="card user-only" id="stats-card">
+                <div class="card-header">
+                    <h2>Статистика</h2>
+                </div>
+                <div class="settings-info" id="stats-info">
+                    <span class="stats-loading">Загрузка...</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2>Смена пароля</h2>
+                </div>
+                <form id="password-form" class="settings-form" onsubmit="return changePassword(event)">
+                    <div class="form-group">
+                        <label>Текущий пароль</label>
+                        <input id="current-password" type="password" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Новый пароль</label>
+                        <input id="new-password" type="password" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Повторите новый пароль</label>
+                        <input id="confirm-new-password" type="password" required />
+                    </div>
+                    <button class="btn btn-success" onclick="changePassword()">Сменить пароль</button>
+                    <div id="password-form-message" class="form-message"></div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const API = '';
+    const THEME_STORAGE_KEY = 'preferredTheme';
+    let eventsCache = [];
+    let tempTimer = null;
+    let currentUser = null;
+    let ordersPage = 0;
+    let ordersTotalPages = 0;
+    let statsCache = { global: null, globalAt: 0, user: null, userAt: 0, orders: null, ordersAt: 0 };
+    let STATS_TTL_MS = 30000;
+    let readersCache = [];
+    let tempExpiredFired = {};
+    let tempLoading = false;
+
+    function isAdminUser() {
+        return currentUser && currentUser.role === 'ADMIN';
+    }
+
+    function showSection(id, btn) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        btn.classList.add('active');
+        if (id === 'events') loadEvents();
+        if (id === 'orders') loadOrders();
+        if (id === 'temp') loadTempRequests();
+        if (id === 'stats') loadGlobalStatistics(false);
+        if (id === 'settings') {
+            loadSettings();
+            if (!isAdminUser()) loadStatistics(false);
+        }
+    }
+
+    async function api(url, opts = {}, authenticated = true) {
+        const headers = new Headers(opts.headers || {});
+        if (authenticated) {
+            const auth = sessionStorage.getItem('auth');
+            if (auth) headers.set('Authorization', auth);
+        }
+        const res = await fetch(API + url, { ...opts, headers });
+        const text = await res.text();
+        let data = null;
+        if (text) {
+            try { data = JSON.parse(text); } catch (error) { data = text; }
+        }
+        if (!res.ok) {
+            if (res.status === 401 && authenticated) showAuth();
+            const message = data && typeof data === 'object' ? data.message : `HTTP ${res.status}`;
+            const error = new Error(message || `HTTP ${res.status}`);
+            error.status = res.status;
+            throw error;
+        }
+        return data;
+    }
+
+    function basicToken(userId, password) {
+        const bytes = new TextEncoder().encode(`${userId}:${password}`);
+        return `Basic ${btoa(String.fromCharCode(...bytes))}`;
+    }
+
+    function setAuthMode(mode) {
+        const isLogin = mode === 'login';
+        const isRegister = mode === 'register';
+        const isAdmin = mode === 'admin';
+        document.getElementById('login-tab').classList.toggle('active', isLogin);
+        document.getElementById('register-tab').classList.toggle('active', isRegister);
+        document.getElementById('admin-register-tab').classList.toggle('active', isAdmin);
+        document.getElementById('login-form').hidden = !isLogin;
+        document.getElementById('register-form').hidden = !isRegister;
+        document.getElementById('admin-register-form').hidden = !isAdmin;
+        document.getElementById('auth-error').textContent = '';
+    }
+
+    function applyTheme(theme) {
+        const value = theme === 'DARK' ? 'DARK' : 'LIGHT';
+        document.body.dataset.theme = value === 'DARK' ? 'dark' : 'light';
+        const button = document.getElementById('theme-toggle');
+        if (button) button.textContent = value === 'DARK' ? 'Светлая тема' : 'Тёмная тема';
+        const select = document.getElementById('set-theme');
+        if (select) select.value = value;
+        return value;
+    }
+
+    function currentTheme() {
+        return document.body.dataset.theme === 'dark' ? 'DARK' : 'LIGHT';
+    }
+
+    async function loadProfileTheme() {
+        const local = sessionStorage.getItem(THEME_STORAGE_KEY);
+        if (local) applyTheme(local);
+        if (!currentUser) return;
+        try {
+            const saved = await api(`/api/settings/${currentUser.userId}/theme`);
+            applyTheme(saved.theme);
+            sessionStorage.setItem(THEME_STORAGE_KEY, saved.theme);
+        } catch (error) {
+            applyTheme(local || 'LIGHT');
+        }
+    }
+
+    async function toggleTheme() {
+        const previous = currentTheme();
+        const next = previous === 'DARK' ? 'LIGHT' : 'DARK';
+        applyTheme(next);
+        if (!currentUser) return;
+        try {
+            const saved = await api(`/api/settings/${currentUser.userId}/theme`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ theme: next })
+            });
+            applyTheme(saved.theme);
+            sessionStorage.setItem(THEME_STORAGE_KEY, saved.theme);
+        } catch (error) {
+            applyTheme(previous);
+            alert('Не удалось сохранить тему: ' + error.message);
+        }
+    }
+
+    function showAuth() {
+        sessionStorage.removeItem('auth');
+        currentUser = null;
+        document.body.dataset.role = '';
+        if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
+        document.getElementById('auth-screen').hidden = false;
+        document.getElementById('app-content').hidden = true;
+        document.getElementById('user-actions').hidden = true;
+        setAuthMode('login');
+    }
+
+    function applySession(user) {
+        currentUser = user;
+        const admin = isAdminUser();
+        document.body.dataset.role = admin ? 'admin' : 'user';
+        document.getElementById('auth-screen').hidden = true;
+        document.getElementById('app-content').hidden = false;
+        document.getElementById('user-actions').hidden = false;
+        document.getElementById('current-user').textContent = user.displayName || user.userId;
+        document.getElementById('current-role').textContent = admin ? 'админ' : 'читатель';
+        document.getElementById('current-role').className = 'role-badge ' + (admin ? '' : 'user');
+        document.getElementById('order-user').value = user.userId;
+        document.getElementById('nav-stats').hidden = !admin;
+        document.getElementById('stats-card').hidden = admin;
+        loadEvents();
+        loadProfileTheme();
+        if (!admin) loadStatistics(false);
+    }
+
+    async function establishSession(userId, password) {
+        sessionStorage.setItem('auth', basicToken(userId, password));
+        const user = await api('/api/auth/me');
+        applySession(user);
+    }
+
+    async function login(event) {
+        event.preventDefault();
+        const userId = document.getElementById('login-user').value.trim().toLowerCase();
+        const password = document.getElementById('login-password').value;
+        try {
+            await api('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, password })
+            }, false);
+            await establishSession(userId, password);
+        } catch (error) {
+            document.getElementById('auth-error').textContent = error.message;
+        }
+    }
+
+    async function register(event) {
+        event.preventDefault();
+        const userId = document.getElementById('register-user').value.trim().toLowerCase();
+        const displayName = document.getElementById('register-name').value.trim();
+        const password = document.getElementById('register-password').value;
+        const confirmation = document.getElementById('register-password-confirm').value;
+        if (password !== confirmation) {
+            document.getElementById('auth-error').textContent = 'Пароли не совпадают';
+            return;
+        }
+        try {
+            await api('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, displayName, password })
+            }, false);
+            await establishSession(userId, password);
+        } catch (error) {
+            document.getElementById('auth-error').textContent = error.message;
+        }
+    }
+
+    async function registerAdmin(event) {
+        event.preventDefault();
+        const userId = document.getElementById('admin-user').value.trim().toLowerCase();
+        const displayName = document.getElementById('admin-name').value.trim();
+        const password = document.getElementById('admin-password').value;
+        const adminCode = document.getElementById('admin-code').value;
+        try {
+            await api('/api/auth/register-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, displayName, password, adminCode })
+            }, false);
+            await establishSession(userId, password);
+        } catch (error) {
+            document.getElementById('auth-error').textContent = error.message;
+        }
+    }
+
+    function logout() {
+        showAuth();
+    }
+
+    function esc(s) {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('event-form').addEventListener('submit', createEvent);
+        document.getElementById('order-stats-panel').addEventListener('toggle', function() {
+            if (this.open) loadOrderStats(false);
+        });
+        restoreSession();
+    });
+
+    async function restoreSession() {
+        if (!sessionStorage.getItem('auth')) {
+            showAuth();
+            return;
+        }
+        try {
+            const user = await api('/api/auth/me');
+            applySession(user);
+        } catch (error) {
+            showAuth();
+        }
+    }
+
+    // --- EVENTS ---
+    async function loadEvents() {
+        eventsCache = await api('/api/events');
+        const tbody = document.getElementById('events-body');
+        if (!eventsCache.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty">В каталоге нет книг</td></tr>';
+            return;
+        }
+        tbody.innerHTML = eventsCache.map(e => {
+            const adminBtn = isAdminUser()
+                ? `<button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')">Удалить</button>`
+                : '';
+            return `
+                    <tr>
+                        <td><strong>${esc(e.title)}</strong><br><small style="color:#999">${esc(e.description||'')}</small><br><small>★ ${Number(e.rating || 0).toFixed(1)} ${((e.genres || []).map(g => `<span class="genre-chip">${esc(g)}</span>`).join(''))}</small></td>
+                        <td>${esc(e.author)}</td>
+                        <td>${esc(e.category)}</td>
+                        <td>${e.availableCopies}</td>
+                        <td><span class="view-btn" onclick="incView('${e.id}', this)">${e.viewCount}</span></td>
+                        <td class="actions">
+                            <button class="btn btn-primary btn-sm" onclick="openBook('${e.id}', this)">Открыть</button>
+                            ${adminBtn}
+                        </td>
+                    </tr>
+                `;
+        }).join('');
+    }
+
+    function showEventFormMessage(text, type) {
+        const message = document.getElementById('event-form-message');
+        message.textContent = text;
+        message.className = `form-message ${type || ''}`;
+    }
+
+    async function createEvent(evt) {
+        evt?.preventDefault();
+        const form = document.getElementById('event-form');
+        if (!form.reportValidity()) return;
+
+        const title = document.getElementById('event-title').value.trim();
+        const description = document.getElementById('event-description').value.trim();
+        const author = document.getElementById('event-author').value.trim();
+        const category = document.getElementById('event-category').value.trim();
+        const rating = Number(document.getElementById('event-rating').value || 0);
+        const genresInput = document.getElementById('event-genres').value
+            .split(',').map(x => x.trim()).filter(Boolean).map(x => x.slice(0, 80));
+        const copiesValue = document.getElementById('event-copies').value;
+        const availableCopies = Number(copiesValue);
+
+        if (!title || !author || !category) {
+            showEventFormMessage('Заполните название, автора и категорию', 'error');
+            return;
+        }
+        if (rating < 0 || rating > 5) {
+            showEventFormMessage('Рейтинг должен быть от 0 до 5', 'error');
+            return;
+        }
+        if (!Number.isInteger(availableCopies) || availableCopies < 0) {
+            showEventFormMessage('Количество копий должно быть целым числом от 0', 'error');
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Добавляем...';
+        showEventFormMessage('', '');
+
+        try {
+            await api('/api/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description, author, category, availableCopies, rating, genres: genresInput })
+            });
+            form.reset();
+            document.getElementById('event-copies').value = '1';
+            showEventFormMessage('Книга добавлена в каталог', 'success');
+            await loadEvents();
+        } catch (error) {
+            showEventFormMessage(error.message || 'Не удалось добавить книгу в каталог', 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Добавить книгу';
+        }
+    }
+
+    async function openBook(id) {
+        const box = document.getElementById('book-details');
+        box.className = 'form-message';
+        box.textContent = 'Открываем книгу...';
+        try {
+            const e = await api(`/api/events/${id}`);
+            box.className = 'form-message success';
+            box.innerHTML = `<strong>${esc(e.title)}</strong> &mdash; ${esc(e.author)}, ${esc(e.category)}. ` +
+                `Копий: ${e.availableCopies}, рейтинг: ${Number(e.rating || 0).toFixed(1)}, жанры: ${(e.genres || []).map(esc).join(", ") || "не указаны"}, просмотров: ${e.viewCount}. ` +
+                `<small>${esc(e.description || '')}</small>`;
+        } catch (error) {
+            box.className = 'form-message error';
+            box.textContent = error.message || 'Не удалось открыть книгу';
+        }
+    }
+
+    async function incView(id) {
+        try {
+            const count = await api(`/api/events/${id}/views`, { method: 'POST' });
+            document.querySelector(`[onclick="incView('${id}']"`).textContent = count;
+            } catch (error) {
+                // silent
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('Удалить книгу из каталога?')) return;
+            await api(`/api/events/${id}`, { method: 'DELETE' });
+            loadEvents();
+        }
+
+        // --- ORDERS ---
+        const ORDER_STATUS_LABELS = {
+            PENDING: 'Запрошена',
+            CONFIRMED: 'Выдана',
+            COMPLETED: 'Возвращена',
+            CANCELLED: 'Отменена'
+        };
+
+        function showOrderFormMessage(text, type) {
+            const message = document.getElementById('order-form-message');
+            message.textContent = text;
+            message.className = `form-message ${type || ''}`;
+        }
+
+        async function loadAllEventsForSelects() {
+            return await api('/api/events');
+        }
+
+        function selectedBookCopies() {
+            const select = document.getElementById('order-event');
+            const option = select.options[select.selectedIndex];
+            if (!option) return null;
+            return Number(option.dataset.copies);
+        }
+
+        function updateOrderAvailability() {
+            const copies = selectedBookCopies();
+            const submit = document.getElementById('order-submit');
+            if (copies === null) {
+                submit.disabled = true;
+                showOrderFormMessage('В каталоге нет ни одной книги', 'error');
+                return;
+            }
+            if (copies <= 0) {
+                submit.disabled = true;
+                showOrderFormMessage('Копий книги больше нет', 'error');
+                return;
+            }
+            submit.disabled = false;
+            showOrderFormMessage(`Доступно копий: ${copies}`, 'success');
+        }
+
+        async function loadReaders() {
+            if (!isAdminUser()) return;
+            try {
+                readersCache = await api('/api/users');
+            } catch (e) {
+                readersCache = [];
+            }
+            const sel = document.getElementById('order-reader');
+            sel.innerHTML = readersCache.map(r =>
+                `<option value="${esc(r.userId)}">${esc(r.displayName || r.userId)}</option>`).join('');
+        }
+
+        function buildOrderActions(o, admin, isMine) {
+            let html = '';
+            if (o.status === 'PENDING') {
+                if (admin) html += `<button class="btn btn-success btn-sm" onclick="updateOrder('${o.id}','CONFIRMED')">Выдать</button>`;
+            if (admin || isMine) html += `<button class="btn btn-danger btn-sm" onclick="updateOrder('${o.id}','CANCELLED')">Отменить</button>`;
+        } else if (o.status === 'CONFIRMED') {
+            if (admin) html += `<button class="btn btn-primary btn-sm" onclick="returnBook('${o.id}')">Принять возврат</button>`;
+        }
+        if (admin && o.status !== 'CONFIRMED') {
+            html += `<button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">Удалить</button>`;
+        }
+        return html;
+    }
+
+    function renderOrdersPagination(pageData) {
+        const box = document.getElementById('orders-pagination');
+        const total = pageData.total || 0;
+        const size = pageData.size || 10;
+        if (!total) { box.innerHTML = ''; return; }
+        const from = pageData.page * size + 1;
+        const to = Math.min(total, (pageData.page + 1) * size);
+        box.innerHTML = `
+                <span>${from}–${to} из ${total}</span>
+                <button class="btn btn-primary btn-sm" ${pageData.page === 0 ? 'disabled' : ''} onclick="changeOrdersPage(-1)">‹ Пред</button>
+                <span>Стр. ${pageData.page + 1} / ${Math.max(1, ordersTotalPages)}</span>
+                <button class="btn btn-primary btn-sm" ${pageData.page + 1 >= ordersTotalPages ? 'disabled' : ''} onclick="changeOrdersPage(1)">След ›</button>`;
+    }
+
+    function changeOrdersPage(delta) {
+        ordersPage = Math.max(0, ordersPage + delta);
+        loadOrders();
+    }
+
+    function changeOrderFilter() {
+        ordersPage = 0;
+        loadOrders();
+    }
+
+    async function loadOrders() {
+        const admin = isAdminUser();
+        document.getElementById('orders-title').textContent = admin ? 'Выдачи и заявки' : 'Мои заказы';
+        document.getElementById('orders-filter-row').hidden = !admin;
+
+        if (admin) {
+            loadReaders();
+        }
+
+        const evts = await loadAllEventsForSelects();
+        const sel = document.getElementById('order-event');
+        sel.innerHTML = evts.map(e => `
+                <option value="${e.id}" data-copies="${e.availableCopies}">
+                    ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
+                </option>
+            `).join('');
+        document.getElementById('order-form').style.display = evts.length ? 'flex' : 'none';
+        updateOrderAvailability();
+
+        const status = document.getElementById('order-status-filter').value;
+        const sort = document.getElementById('order-sort').value;
+        const direction = document.getElementById('order-direction').value;
+        const size = Number(document.getElementById('order-page-size').value) || 10;
+
+        const params = new URLSearchParams({sort, direction, page: String(ordersPage), size: String(size)});
+        if (status) params.set('status', status);
+
+        let pageData;
+        try {
+            pageData = await api(`/api/orders?${params.toString()}`);
+        } catch (e) {
+            document.getElementById('orders-body').innerHTML =
+                `<tr><td colspan="8" class="empty">${esc(e.message)}</td></tr>`;
+            document.getElementById('orders-pagination').innerHTML = '';
+            return;
+        }
+
+        const orders = pageData.items || [];
+        ordersTotalPages = pageData.totalPages || 0;
+        if (ordersPage > 0 && ordersPage >= ordersTotalPages) {
+            ordersPage = Math.max(0, ordersTotalPages - 1);
+            return loadOrders();
+        }
+
+        const tbody = document.getElementById('orders-body');
+        const statusBadge = s => `<span class="badge badge-${s.toLowerCase()}">${ORDER_STATUS_LABELS[s] || s}</span>`;
+        const evTitle = id => {
+            const e = evts.find(x => x.id === id);
+            return e ? esc(e.title) : id.slice(0, 8);
+        };
+        const fmt = v => v ? new Date(v).toLocaleString('ru-RU') : '—';
+
+        if (!orders.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="empty">${admin ? 'Выдач и заявок пока нет' : 'У вас пока нет заказов'}</td></tr>`;
+        } else {
+            tbody.innerHTML = orders.map(o => {
+                const isMine = o.userId === currentUser.userId;
+                const actions = buildOrderActions(o, admin, isMine);
+                return `
+                        <tr>
+                            <td><small>${o.id.slice(0, 8)}</small></td>
+                            <td>${evTitle(o.eventId)}</td>
+                            <td class="reader-col">${esc(o.readerName || o.userId)}</td>
+                            <td>${statusBadge(o.status)}</td>
+                            <td><small>${o.issuedByName ? esc(o.issuedByName) : '—'}</small></td>
+                            <td><small>${fmt(o.issuedAt)}</small></td>
+                            <td><small>${fmt(o.returnedAt)}</small></td>
+                            <td class="actions">${actions || '—'}</td>
+                        </tr>`;
+            }).join('');
+        }
+
+        renderOrdersPagination(pageData);
+    }
+
+    async function createOrder() {
+        const admin = isAdminUser();
+        const eventId = document.getElementById('order-event').value;
+        const readerId = admin
+            ? document.getElementById('order-reader').value
+            : currentUser.userId;
+        if (!eventId) { showOrderFormMessage('Выберите книгу', 'error'); return; }
+        if (admin && !readerId) { showOrderFormMessage('Выберите читателя', 'error'); return; }
+        const copies = selectedBookCopies();
+        if (copies === null || copies <= 0) {
+            showOrderFormMessage('Копий книги больше нет', 'error');
+            return;
+        }
+        try {
+            await api('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eventId, userId: readerId })
+            });
+        } catch (error) {
+            if (error.status === 409) {
+                showOrderFormMessage('Копий книги больше нет', 'error');
+            } else {
+                showOrderFormMessage(error.message || 'Не удалось выдать книгу', 'error');
+            }
+            return;
+        }
+        await loadOrders();
+        showOrderFormMessage('Книга выдана читателю', 'success');
+    }
+
+    async function updateOrder(id, status) {
+        try {
+            await api(`/api/orders/${id}/status?status=${status}`, { method: 'PUT' });
+        } catch (error) {
+            showOrderFormMessage(error.message || 'Не удалось изменить статус', 'error');
+            return;
+        }
+        await loadOrders();
+        showOrderFormMessage(
+            status === 'CONFIRMED' ? 'Книга выдана' : 'Заявка отменена',
+            'success'
+        );
+    }
+
+    async function returnBook(id) {
+        try {
+            await api(`/api/orders/${id}/return`, { method: 'POST' });
+        } catch (error) {
+            showOrderFormMessage(error.message || 'Не удалось принять возврат', 'error');
+            return;
+        }
+        await loadOrders();
+        showOrderFormMessage('Книга возвращена, копия снова в каталоге', 'success');
+    }
+
+    async function deleteOrder(id) {
+        if (!confirm('Удалить заявку?')) return;
+        try {
+            await api(`/api/orders/${id}`, { method: 'DELETE' });
+        } catch (e) {
+            showOrderFormMessage(e.message, 'error');
+            return;
+        }
+        loadOrders();
+    }
+
+    // --- TEMP REQUESTS ---
+    async function loadTempRequests() {
+        tempExpiredFired = {};
+        if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
+        const admin = isAdminUser();
+        if (admin) {
+            if (!readersCache.length) await loadReaders();
+        } else {
+            readersCache = [];
+        }
+
+        const [reqs, evts] = await Promise.all([
+            api('/api/temp-requests'),
+            loadAllEventsForSelects()
+        ]);
+
+        const selEvent = document.getElementById('temp-event');
+        selEvent.innerHTML = evts.map(e => `<option value="${e.id}">${esc(e.title)}</option>`).join('');
+
+        const selReader = document.getElementById('temp-reader');
+        selReader.innerHTML = readersCache.map(r =>
+            `<option value="${esc(r.userId)}" title="${esc(r.userId)}">${esc(r.displayName)}</option>`).join('');
+
+        const form = document.getElementById('temp-form');
+        form.hidden = !admin;
+        form.style.display = (admin && evts.length && readersCache.length) ? 'flex' : 'none';
+
+        const tbody = document.getElementById('temp-body');
+        if (!reqs.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="empty">${admin ? 'Нет временных заявок' : 'У вас нет временных заявок'}</td></tr>`;
+            return;
+        }
+
+        const evTitle = id => { const e = evts.find(x => x.id === id); return e ? esc(e.title) : id.slice(0,8); };
+
+        tbody.innerHTML = reqs.map(r => `
+                <tr data-id="${r.id}" data-expires="${r.expiresAt}">
+                    <td><small>${r.id.slice(0,8)}</small></td>
+                    <td>${evTitle(r.eventId)}</td>
+                    <td title="${esc(r.userId)}">${esc(r.userName || r.userId)}</td>
+                    <td title="${r.createdById ? esc(r.createdById) : ''}">${r.createdByName ? esc(r.createdByName) : '—'}</td>
+                    <td>${esc(r.purpose)}</td>
+                    <td class="ttl-cell"></td>
+                    <td class="actions">
+                        ${admin ? `<button class="btn btn-danger btn-sm" onclick="deleteTempRequest('${r.id}')">Удалить</button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+
+        updateTtlCells();
+        tempTimer = setInterval(updateTtlCells, 1000);
+    }
+
+    function updateTtlCells() {
+        let anyExpired = false;
+        document.querySelectorAll('#temp-body tr[data-expires]').forEach(row => {
+            const expires = new Date(row.dataset.expires);
+            const now = new Date();
+            const diff = Math.max(0, Math.floor((expires - now) / 1000));
+            const cell = row.querySelector('.ttl-cell');
+            if (diff <= 0) {
+                cell.textContent = 'Истёк';
+                cell.style.color = '#e74c3c';
+                cell.style.fontWeight = '600';
+                if (!tempExpiredFired[row.dataset.id]) {
+                    tempExpiredFired[row.dataset.id] = true;
+                    anyExpired = true;
+                }
+            } else {
+                const m = Math.floor(diff / 60);
+                const s = diff % 60;
+                cell.textContent = `${m}:${String(s).padStart(2,'0')}`;
+                cell.style.color = diff <= 10 ? '#e74c3c' : '#27ae60';
+                cell.style.fontWeight = diff <= 10 ? '600' : '400';
+            }
+        });
+        if (anyExpired) {
+            if (tempTimer) { clearInterval(tempTimer); tempTimer = null; }
+        }
+    }
+
+    async function createTempRequest() {
+        const admin = isAdminUser();
+        const eventId = document.getElementById('temp-event').value;
+        const readerId = admin && readersCache.length
+            ? document.getElementById('temp-reader').value
+            : '';
+        const ttl = document.getElementById('temp-ttl').value;
+        if (!eventId || !readerId) { alert('Выберите книгу и читателя'); return; }
+        try {
+            await api(`/api/temp-requests?eventId=${encodeURIComponent(eventId)}&userId=${encodeURIComponent(readerId)}&purpose=reservation&ttlSeconds=${encodeURIComponent(ttl)}`, {
+                method: 'POST'
+            });
+        } catch (e) {
+            alert('Не удалось создать: ' + e.message);
+            return;
+        }
+        loadTempRequests();
+    }
+
+    async function deleteTempRequest(id) {
+        try {
+            await api(`/api/temp-requests/${id}`, { method: 'DELETE' });
+        } catch (e) {
+            alert('Не удалось удалить: ' + e.message);
+            return;
+        }
+        loadTempRequests();
+    }
+
+    // --- STATISTICS ---
+    async function loadGlobalStatistics(force = false) {
+        const box = document.getElementById('global-stats-info');
+        if (!force && statsCache.global && Date.now() - statsCache.globalAt < STATS_TTL_MS) {
+            renderGlobalStats(statsCache.global);
+            return;
+        }
+        box.innerHTML = '<span class="stats-loading">Загрузка...</span>';
+        try {
+            const stats = await api('/api/statistics/global' + (force ? '?refresh=true' : ''));
+            statsCache.global = stats;
+            statsCache.globalAt = Date.now();
+            renderGlobalStats(stats);
+        } catch (error) {
+            box.innerHTML = `<span class="stats-loading">Не удалось загрузить статистику: ${esc(error.message || error)}</span>`;
+        }
+    }
+
+    function renderGlobalStats(stats) {
+        const box = document.getElementById('global-stats-info');
+        const topItems = (stats.topViewed || [])
+            .map(t => `<li>${esc(t.title)} — ${t.viewCount}</li>`)
+            .join('');
+        box.innerHTML = `
+                <div class="stats-group">
+                    <h3>Библиотека</h3>
+                    <div class="settings-row"><span class="settings-label">Книг в каталоге:</span><span class="settings-value">${stats.books}</span></div>
+                    <div class="settings-row"><span class="settings-label">Всего заказов:</span><span class="settings-value">${stats.orders}</span></div>
+                    <div class="settings-row"><span class="settings-label">Выдано книг:</span><span class="settings-value">${stats.issued}</span></div>
+                    <div class="settings-row"><span class="settings-label">Возвращено книг:</span><span class="settings-value">${stats.returned}</span></div>
+                    <div class="settings-row"><span class="settings-label">Читателей:</span><span class="settings-value">${stats.readers}</span></div>
+                </div>
+                ${topItems ? `<div class="stats-group"><h3>Часто просматриваемое</h3><ol class="stats-top-list">${topItems}</ol></div>` : ''}
+            `;
+    }
+
+    async function loadOrderStats(force = false) {
+        if (!isAdminUser()) return;
+        const box = document.getElementById('order-stats-content');
+        box.innerHTML = '<span class="stats-loading">Загрузка...</span>';
+        try {
+            const stats = await api('/api/statistics/orders' + (force ? '?refresh=true' : ''));
+            box.innerHTML = `
+                    <div class="stat-tile">
+                        <strong>${stats.total || 0}</strong>
+                        <span>Всего заявок</span>
+                    </div>
+                    <div class="stat-tile">
+                        <strong>${stats.pending || 0}</strong>
+                        <span>Ожидают</span>
+                    </div>
+                    <div class="stat-tile">
+                        <strong>${stats.confirmed || 0}</strong>
+                        <span>Выданы</span>
+                    </div>
+                    <div class="stat-tile">
+                        <strong>${stats.returned || 0}</strong>
+                        <span>Возвращены</span>
+                    </div>
+                    <div class="stat-tile">
+                        <strong>${stats.cancelled || 0}</strong>
+                        <span>Отменены</span>
+                    </div>
+                `;
+        } catch (error) {
+            box.innerHTML = `<span class="stats-loading">Не удалось: ${esc(error.message || error)}</span>`;
+        }
+    }
+
+    async function loadStatistics(force = false) {
+        if (isAdminUser()) return;
+        const box = document.getElementById('stats-info');
+        if (!force && statsCache.user && Date.now() - statsCache.userAt < STATS_TTL_MS) {
+            renderUserStats(statsCache.user);
+            return;
+        }
+        box.innerHTML = '<span class="stats-loading">Загрузка...</span>';
+        try {
+            const s = await api('/api/users/me/statistics' + (force ? '?refresh=true' : ''));
+            statsCache.user = s;
+            statsCache.userAt = Date.now();
+            renderUserStats(s);
+        } catch (e) {
+            box.innerHTML = `<span class="stats-loading">Ошибка: ${esc(e.message)}</span>`;
+        }
+    }
+
+    function renderUserStats(s) {
+        const box = document.getElementById('stats-info');
+        box.innerHTML = `
+                <div class="settings-row"><span class="settings-label">Взято всего:</span><span class="settings-value">${s.orders.issued}</span></div>
+                <div class="settings-row"><span class="settings-label">Возвращено:</span><span class="settings-value">${s.orders.returned}</span></div>
+                <div class="settings-row"><span class="settings-label">% возврата:</span><span class="settings-value">${s.orders.returnRatePercent}%</span></div>
+                <div class="settings-row"><span class="settings-label">На руках сейчас:</span><span class="settings-value">${s.orders.active}</span></div>`;
+    }
+
+    async function loadSettings() {
+        if (!currentUser) return;
+        try {
+            const s = await api(`/api/settings/${currentUser.userId}`);
+            document.getElementById('set-name').textContent = currentUser.displayName || currentUser.userId;
+            document.getElementById('set-user').textContent = currentUser.userId;
+            const notif = document.getElementById('set-notif');
+            if (notif) notif.value = String(s.notificationsEnabled);
+            const perpage = document.getElementById('set-perpage');
+            if (perpage) perpage.value = s.maxResultsPerPage || 20;
+            const theme = document.getElementById('set-theme');
+            if (theme) theme.value = s.theme;
+        } catch (e) {
+            // silent
+        }
+    }
+
+    async function changePassword() {
+        const current = document.getElementById('current-password').value;
+        const next = document.getElementById('new-password').value;
+        const confirmPass = document.getElementById('confirm-new-password').value;
+        if (!current || !next || !confirmPass) {
+            showPasswordFormMessage('Заполните все поля', 'error');
+            return;
+        }
+        if (next !== confirmPass) {
+            showPasswordFormMessage('Новые пароли не совпадают', 'error');
+            return;
+        }
+        try {
+            await api('/api/users/change-password', {
+                method: 'POST',
+                body: JSON.stringify({ currentPassword: current, newPassword: next })
+            });
+            showPasswordFormMessage('Пароль успешно изменён', 'success');
+            document.getElementById('password-form').reset();
+        } catch (e) {
+            showPasswordFormMessage('Ошибка: ' + e.message, 'error');
+        }
+    }
+
+    function showPasswordFormMessage(text, type) {
+        const message = document.getElementById('password-form-message');
+        message.textContent = text;
+        message.className = `form-message ${type || ''}`;
+    }
+</script>
+</body>
+</html>

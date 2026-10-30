@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,19 +44,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(Authentication authentication) {
+        // Роль уже берётся из БД в AuthService.toResponse(...)
         return ResponseEntity.ok(authService.currentUser(authentication.getName()));
-    }
-
-    @PostMapping("/change-password")
-    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
-                                               Authentication authentication) {
-        authService.changePassword(authentication.getName(), request);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/account")
-    public ResponseEntity<Void> deleteAccount(Authentication authentication) {
-        authService.deleteAccount(authentication.getName());
-        return ResponseEntity.noContent().build();
     }
 }

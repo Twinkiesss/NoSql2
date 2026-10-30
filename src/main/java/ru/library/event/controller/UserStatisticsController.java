@@ -3,10 +3,7 @@ package ru.library.event.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.library.event.model.UserStatisticsResponse;
 import ru.library.event.service.UserStatisticsService;
 
@@ -22,7 +19,9 @@ public class UserStatisticsController {
 
     @GetMapping("/me/statistics")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<UserStatisticsResponse> getMyStatistics(Authentication authentication) {
-        return ResponseEntity.ok(statisticsService.getStatistics(authentication.getName()));
+    public ResponseEntity<UserStatisticsResponse> getMyStatistics(
+            Authentication authentication,
+            @RequestParam(defaultValue = "false") boolean refresh) {
+        return ResponseEntity.ok(statisticsService.getStatistics(authentication.getName(), refresh));
     }
 }
