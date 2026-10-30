@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,7 +9,7 @@ services:
       POSTGRES_USER: library
       POSTGRES_PASSWORD: library
     ports:
-      - "5432:5432"
+      - "5433:5432"           # ← изменён внешний порт на 5433 (как в приложении)
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +28,7 @@ services:
       ETCD_NAME: etcd-node0
       ETCD_DATA_DIR: /etcd-data
       ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
-      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://localhost:2379   # ← исправлено на localhost (хост видит только его)
       ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
       ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
       ETCD_INITIAL_CLUSTER: etcd-node0=http://etcd:2380
@@ -36,6 +38,30 @@ services:
     volumes:
       - etcd-data:/etcd-data
 
+  couchdb1:
+    image: couchdb:3.3
+    container_name: library-couchdb1
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: admin
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb1-data:/opt/couchdb/data
+
+  couchdb2:
+    image: couchdb:3.3
+    container_name: library-couchdb2
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: admin
+    ports:
+      - "5985:5984"
+    volumes:
+      - couchdb2-data:/opt/couchdb/data
+
 volumes:
   postgres-data:
   etcd-data:
+  couchdb1-data:
+  couchdb2-data:
