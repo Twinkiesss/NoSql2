@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import ru.library.event.exception.EventNotFoundException;
-import ru.library.event.exception.InvalidCurrentPasswordException;
 import ru.library.event.exception.InvalidOrderStateException;
 import ru.library.event.exception.NoAvailableCopiesException;
 import ru.library.event.exception.OrderNotFoundException;
@@ -51,11 +50,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInvalidOrderState(InvalidOrderStateException ex) {
         log.warn("Invalid order state: {}", ex.getMessage());
         return response(HttpStatus.CONFLICT, ex.getMessage());
-    }
-
-    @ExceptionHandler(InvalidCurrentPasswordException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCurrentPassword(InvalidCurrentPasswordException ex) {
-        return response(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

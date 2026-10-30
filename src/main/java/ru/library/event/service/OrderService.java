@@ -2,6 +2,10 @@ package ru.library.event.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +36,7 @@ public class OrderService {
     private final EventService eventService;
     private final UserAccountRepository userAccountRepository;
 
-    public OrderService(OrderRepository orderRepository,
-                        TemporaryRequestRepository tempRequestRepository,
+    public OrderService(OrderRepository orderRepository, TemporaryRequestRepository tempRequestRepository,
                         EventService eventService,
                         UserAccountRepository userAccountRepository) {
         this.orderRepository = orderRepository;
@@ -79,8 +82,13 @@ public class OrderService {
         return saved;
     }
 
-    public Optional<Order> getOrder(String id) {
-        return orderRepository.findById(id);
+    @Transactional(readOnly = true)
+    public Optional<Order> getOrder(String id, String userId, boolean admin) {
+        Optional<Order> found = orderRepository.findById(id);
+        if (!admin && found.isPresent() && !found.get().getUserId().equals(userId)) {
+            throw new AccessDeniedException("Нельзя просматривать чужую заявку");
+        }
+        return found;
     }
 
     public Optional<Order> getOrder(String id, String actorId, boolean admin) {
@@ -106,9 +114,8 @@ public class OrderService {
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
-        if (order.getStatus() == Order.Status.COMPLETED || order.getStatus() == Order.Status.CANCELLED) {
-            throw new InvalidOrderStateException(
-                    "Событие " + orderId + " уже завершено со статусом " + order.getStatus());
+        if (order.getStatus() != Order.Status.PENDING) {
+            throw new InvalidOrderStateException("Выдать или отменить можно только заявку со статусом PENDING");
         }
         if (status == Order.Status.COMPLETED) {
             throw new InvalidOrderStateException(
@@ -183,8 +190,7 @@ public class OrderService {
                     "Событие " + orderId + " отменено, книга уже возвращена в каталог");
         }
         if (order.getStatus() != Order.Status.CONFIRMED) {
-            throw new InvalidOrderStateException(
-                    "Книгу по событию " + orderId + " ещё не выдали: сначала подтвердите выдачу");
+            throw new InvalidOrderStateException("Вернуть можно только выданную книгу");
         }
         if (order.getManagerId() == null) {
             // Заказы, выданные до появления ролей, не имеют известного администратора.
@@ -221,11 +227,7 @@ public class OrderService {
                 request.getId(), eventId, readerId, createdById, effectiveTtl);
         return request;
     }
-
-    public Optional<TemporaryRequest> getTemporaryRequest(String id) {
-        return tempRequestRepository.findById(id);
-    }
-
+    public Optional<TemporaryRequest> getTemporaryRequest(String id) { return tempRequestRepository.findById(id); }
     public Optional<TemporaryRequest> getTemporaryRequest(String id, String actorId, boolean admin) {
         Optional<TemporaryRequest> request = tempRequestRepository.findById(id);
         if (request.isPresent() && !admin && !request.get().getUserId().equals(actorId)) {
@@ -234,10 +236,7 @@ public class OrderService {
         return request;
     }
 
-    public List<TemporaryRequest> getAllTemporaryRequests() {
-        return tempRequestRepository.findAll();
-    }
-
+    public List<TemporaryRequest> getAllTemporaryRequests() { return tempRequestRepository.findAll(); }
     public List<TemporaryRequest> getTemporaryRequests(String actorId, boolean admin) {
         return tempRequestRepository.findAll().stream()
                 .filter(request -> !request.isExpired())
@@ -245,10 +244,7 @@ public class OrderService {
                 .toList();
     }
 
-    public void deleteTemporaryRequest(String id) {
-        tempRequestRepository.deleteById(id);
-        log.info("Temporary request deleted: id={}", id);
-    }
+    public void deleteTemporaryRequest(String id) { tempRequestRepository.deleteById(id); }
 
     private String displayName(String userId) {
         return userAccountRepository.findById(userId)
