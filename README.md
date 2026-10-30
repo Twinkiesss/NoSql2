@@ -13,23 +13,10 @@
 
 ## Запуск
 
-1. Запустите Docker Desktop и дождитесь состояния **Engine running**.
-2. В корне проекта выполните:
-
    ```powershell
    docker compose up -d
-   ```
-
-3. Соберите проект и выполните тесты:
-
-   ```powershell
-   mvn clean verify
-   ```
-
-4. Запустите приложение:
-
-   ```powershell
-   mvn spring-boot:run
+mvn clean package    
+mvn spring-boot:run
    ```
 
 5. Откройте `http://localhost:8081`.
