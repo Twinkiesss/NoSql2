@@ -913,18 +913,18 @@
 
     async function loadOrders() {
         const admin = isAdminUser();
-        const [orders, evts] = await Promise.all([
+        const [page, evts] = await Promise.all([
             api('/api/orders'),
             loadAllEventsForSelects()
         ]);
-        ordersCache = orders;
+        ordersCache = page.items;   // ← вытащили массив из PageResponse
         const form = document.getElementById('order-form');
         const sel = document.getElementById('order-event');
         sel.innerHTML = evts.map(e => `
-                <option value="${e.id}" data-copies="${e.availableCopies}">
-                    ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
-                </option>
-            `).join('');
+            <option value="${e.id}" data-copies="${e.availableCopies}">
+                ${esc(e.title)}${e.availableCopies > 0 ? '' : ' — нет копий'}
+            </option>
+        `).join('');
         if (admin) {
             readersCache = await api('/api/users');
             const readerSelect = document.getElementById('order-reader');
@@ -1126,10 +1126,21 @@
         const readerId = document.getElementById('temp-reader').value;
         const ttl = document.getElementById('temp-ttl').value;
         if (!eventId || !readerId) { alert('Выберите книгу и читателя'); return; }
-        await api(`/api/temp-requests?eventId=${encodeURIComponent(eventId)}&userId=${encodeURIComponent(readerId)}&purpose=reservation&ttlSeconds=${encodeURIComponent(ttl)}`, {
-            method: 'POST'
-        });
-        loadTempRequests();
+        try {
+            await api('/api/temp-requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventId,
+                    userId: readerId,
+                    purpose: 'reservation',
+                    ttlSeconds: Number(ttl)
+                })
+            });
+            loadTempRequests();
+        } catch (error) {
+            alert('Не удалось создать заявку: ' + (error.message || error));
+        }
     }
 
     async function deleteTempRequest(id) {

@@ -1,16 +1,11 @@
 package ru.library.event.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import ru.library.event.model.CreateTemporaryRequest;
 import ru.library.event.model.TemporaryRequest;
 import ru.library.event.model.TemporaryRequestResponse;
 import ru.library.event.service.OrderService;
@@ -31,13 +26,11 @@ public class TemporaryRequestController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TemporaryRequestResponse> createTemporaryRequest(
-            @RequestParam String eventId,
-            @RequestParam String userId,
-            @RequestParam(defaultValue = "reservation") String purpose,
-            @RequestParam(defaultValue = "300") long ttlSeconds,
+            @Valid @RequestBody CreateTemporaryRequest body,
             Authentication authentication) {
         TemporaryRequest request = orderService.createTemporaryRequest(
-                eventId, userId, authentication.getName(), purpose, ttlSeconds);
+                body.getEventId(), body.getUserId(), authentication.getName(),
+                body.getPurpose(), body.getTtlSeconds());
         return ResponseEntity.ok(TemporaryRequestResponse.from(request));
     }
 
