@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -17,6 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   etcd:
     image: quay.io/coreos/etcd:v3.5.9
@@ -28,7 +28,7 @@ services:
       ETCD_NAME: etcd-node0
       ETCD_DATA_DIR: /etcd-data
       ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
-      ETCD_ADVERTISE_CLIENT_URLS: http://localhost:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
       ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
       ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
       ETCD_INITIAL_CLUSTER: etcd-node0=http://etcd:2380
@@ -37,6 +37,7 @@ services:
       ALLOW_NONE_AUTHENTICATION: "yes"
     volumes:
       - etcd-data:/etcd-data
+    restart: unless-stopped
 
   couchdb1:
     image: couchdb:3.3
@@ -48,6 +49,13 @@ services:
       - "5984:5984"
     volumes:
       - couchdb1-data:/opt/couchdb/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5984/_up || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   couchdb2:
     image: couchdb:3.3
@@ -59,40 +67,113 @@ services:
       - "5985:5984"
     volumes:
       - couchdb2-data:/opt/couchdb/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5984/_up || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   scylla1:
     image: scylladb/scylla:5.4.4
     container_name: library-scylla1
-    command: --seeds=scylla1 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: >
+      --seeds=scylla1
+      --smp 1
+      --memory 750M
+      --overprovisioned 1
+      --api-address 0.0.0.0
+      --developer-mode 1
     ports:
       - "9042:9042"
     volumes:
       - scylla1-data:/var/lib/scylla
     healthcheck:
-      test: [ "CMD-SHELL", "cqlsh $(hostname -i) 9042 -e 'DESCRIBE CLUSTER'" ]
-      interval: 15s
-      timeout: 10s
-      retries: 30
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   scylla2:
     image: scylladb/scylla:5.4.4
     container_name: library-scylla2
-    command: --seeds=scylla1 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
-    depends_on:
-      scylla1:
-        condition: service_started
+    command: >
+      --seeds=scylla1
+      --smp 1
+      --memory 750M
+      --overprovisioned 1
+      --api-address 0.0.0.0
+      --developer-mode 1
     volumes:
       - scylla2-data:/var/lib/scylla
+    depends_on:
+      scylla1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   scylla3:
     image: scylladb/scylla:5.4.4
     container_name: library-scylla3
-    command: --seeds=scylla1 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
-    depends_on:
-      scylla1:
-        condition: service_started
+    command: >
+      --seeds=scylla1
+      --smp 1
+      --memory 750M
+      --overprovisioned 1
+      --api-address 0.0.0.0
+      --developer-mode 1
     volumes:
       - scylla3-data:/var/lib/scylla
+    depends_on:
+      scylla1:
+        condition: service_healthy
+      scylla2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT now() FROM system.local' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: library-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      couchdb1:
+        condition: service_healthy
+      scylla1:
+        condition: service_healthy
+      scylla2:
+        condition: service_healthy
+      scylla3:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/library
+      SPRING_DATASOURCE_USERNAME: library
+      SPRING_DATASOURCE_PASSWORD: library
+      ETCD_ENDPOINTS: http://etcd:2379
+      COUCHDB_PRIMARY_URL: http://couchdb1:5984
+      COUCHDB_REPLICA_URL: http://couchdb2:5984
+      SCYLLA_CONTACT_POINT: scylla1
+      SCYLLA_PORT: 9042
+      SCYLLA_DATACENTER: datacenter1
+      SCYLLA_CONSISTENCY: ALL
+      #QUORUM ALL
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
 
 volumes:
   postgres-data:
