@@ -1,0 +1,84 @@
+﻿[2026-11-20 15:05:03] === Preflight ===
+[2026-11-20 15:05:04] Cluster: 3 x UN - OK
+[2026-11-20 15:05:05] App: scyllaAvailable=true - OK
+[2026-11-20 15:05:05] App consistency: QUORUM
+[2026-11-20 15:05:05] === Truncating denormalized tables ===
+[2026-11-20 15:05:06] TRUNCATE library_events.action_by_object_bucket
+[2026-11-20 15:05:08] TRUNCATE library_events.action_by_user_bucket
+[2026-11-20 15:05:09] TRUNCATE library_events.action_by_type_bucket
+[2026-11-20 15:05:12] Tables truncated
+[2026-11-20 15:05:12] === Baseline ===
+[2026-11-20 15:05:14] COUNT(*) scylla1=0 scylla2=0 scylla3=0
+[2026-11-20 15:05:14] --- netstats BEFORE (scylla1) ---
+[2026-11-20 15:05:15] Mode: NORMAL
+Not sending any streams.
+Read Repair Statistics:
+Attempted: 0
+Mismatch (Blocking): 0
+Mismatch (Background): 0
+Pool Name                    Active   Pending      Completed   Dropped
+Large messages                  n/a         2          20831         0
+Small messages                  n/a         0           1228         0
+Gossip messages                 n/a         0              0         0
+
+[2026-11-20 15:05:15] === Stopping library-scylla3 ===
+[2026-11-20 15:05:15] scylla3 IP: 172.20.0.8
+[2026-11-20 15:05:21] Waiting for scylla3 to become DN (timeout 30s)...
+[2026-11-20 15:05:23] scylla3 is DN - OK
+[2026-11-20 15:05:23] === Writing 1000 events with QUORUM (scylla3 down) ===
+[2026-11-20 15:05:25] Benchmark OK: written=1000, elapsedMs=1792, throughput=558/s
+[2026-11-20 15:05:25] === Hints on live nodes (scylla3 down) ===
+[2026-11-20 15:05:29] system.hints count: scylla1=0 scylla2=0
+[2026-11-20 15:05:29] --- netstats DURING (scylla1) ---
+[2026-11-20 15:05:30] Mode: NORMAL
+Not sending any streams.
+Read Repair Statistics:
+Attempted: 0
+Mismatch (Blocking): 0
+Mismatch (Background): 0
+Pool Name                    Active   Pending      Completed   Dropped
+Large messages                  n/a         5          17993         0
+Small messages                  n/a         0           1234         0
+Gossip messages                 n/a         0              0         0
+
+[2026-11-20 15:05:30] --- tpstats hints (scylla1) ---
+[2026-11-20 15:05:31] === StrictHintCheck: creating sync point for 172.20.0.8 ===
+[2026-11-20 15:05:32] sync point id: "AkIAAACFQwHKvy0vJniLsbvpyD6WAQAgAAAAAQAAAAgAFKwBAAAAEAAAAGmBMAAAAAAAqJ0IAAwAAAAAAAAAAAAAAIErafzc044f"
+[2026-11-20 15:05:42] sync point status (during down): "IN_PROGRESS"
+[2026-11-20 15:05:42] === Starting library-scylla3 ===
+[2026-11-20 15:05:42] Container scylla3 is running
+[2026-11-20 15:05:42] Waiting for scylla3 to become UN (timeout 60s)...
+[2026-11-20 15:05:58] scylla3 is UN - OK
+[2026-11-20 15:05:58] Waiting for CQL on scylla3 (timeout 90s)...
+[2026-11-20 15:07:32] WARNING: cqlsh on scylla3 not ready in 90s, РїСЂРѕР±СѓРµРј РІСЃС‘ СЂР°РІРЅРѕ
+[2026-11-20 15:07:32] === Waiting for hints to drain (max 30s) ===
+[2026-11-20 15:07:34] hints: scylla1=0 scylla2=0
+[2026-11-20 15:07:34] Hints drained - OK
+[2026-11-20 15:07:34] --- netstats AFTER drain (scylla1) ---
+[2026-11-20 15:07:35] Mode: NORMAL
+Not sending any streams.
+Read Repair Statistics:
+Attempted: 0
+Mismatch (Blocking): 0
+Mismatch (Background): 0
+Pool Name                    Active   Pending      Completed   Dropped
+Large messages                  n/a         2          20214         0
+Small messages                  n/a         0           1298         0
+Gossip messages                 n/a         0              0         0
+
+[2026-11-20 15:07:35] === StrictHintCheck: final sync point status ===
+[2026-11-20 15:07:35] sync point final: "DONE"
+[2026-11-20 15:07:35] === Final counts ===
+[2026-11-20 15:07:37] COUNT(*) scylla1=1000 scylla2=1000 scylla3=1000
+[2026-11-20 15:07:37] t_stop            = 2026-11-20 15:05:15
+[2026-11-20 15:07:37] t_dn              = 2026-11-20 15:05:23
+[2026-11-20 15:07:37] t_write_start     = 2026-11-20 15:05:23
+[2026-11-20 15:07:37] t_write_end       = 2026-11-20 15:05:25
+[2026-11-20 15:07:37] t_start           = 2026-11-20 15:05:42
+[2026-11-20 15:07:37] t_un              = 2026-11-20 15:05:58
+[2026-11-20 15:07:37] t_drain_start     = 2026-11-20 15:07:32
+[2026-11-20 15:07:37] t_drain_end       = 2026-11-20 15:07:34
+[2026-11-20 15:07:37] duration_down_sec = 27
+[2026-11-20 15:07:37] duration_drain_sec= 1.5
+[2026-11-20 15:07:37] === Result ===
+[2026-11-20 15:07:37] OK: РІСЃРµ СѓР·Р»С‹ РёРјРµСЋС‚ РѕРґРёРЅР°РєРѕРІРѕРµ С‡РёСЃР»Рѕ СЃРѕР±С‹С‚РёР№ (1000). Hinted handoff СЃСЂР°Р±РѕС‚Р°Р».

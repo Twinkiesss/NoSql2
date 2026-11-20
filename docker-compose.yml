@@ -169,7 +169,7 @@ services:
       SCYLLA_CONTACT_POINT: scylla1
       SCYLLA_PORT: 9042
       SCYLLA_DATACENTER: datacenter1
-      SCYLLA_CONSISTENCY: ALL
+      SCYLLA_CONSISTENCY: QUORUM
       #QUORUM ALL
     ports:
       - "8081:8081"
