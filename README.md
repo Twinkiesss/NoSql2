@@ -18,7 +18,7 @@
     - [5. Эксперимент Отказ узла и hinted handoff](#5-отказ-узла-и-hinted-handoff)
     - [6. Эксперимент SSTable: структура и содержимое](#6-sstable-структура-и-содержимое)
     - [7. Нагрузочный эксперимент](#7-нагрузочный-эксперимент)
-    - [8. Что приложить к отчёту](#8-что-приложить-к-отчёту)
+
 ## Технологии
 
 - Java 17, Spring Boot 3.2, Maven
@@ -311,7 +311,30 @@ Clustering: `2026-11-20T12:05:25.282Z:b800fc80-...` — это `(event_time, eve
 
 SSTable — неизменяемый файл: каждый flush/compaction создаёт новый `Data.db`, старый не меняется. Обновления и удаления — это новые SSTable + tombstone-маркеры, физически они удаляются при compaction. Partition key, clustering и порядок строк в `dump-data` совпадают со схемой таблицы.
 
-### Вывод
+# 7-нагрузочный-эксперимент
+### Методика
 
-SSTable — неизменяемый файл: каждый flush/compaction создаёт новый `*-Data.db`, старый не меняется. Обновления и удаления в Scylla — это новые SSTable + tombstone-маркеры, физическое удаление происходит при compaction. Partition key и clustering columns в `dump-data`/`dump-statistics` совпадают со схемой `CREATE TABLE`, сортировка строк — по убыванию `event_time`, как задано в `CLUSTERING ORDER BY`.
+Нагрузка — end-to-end через HTTP: `POST /api/events/{ObjectId}/views`.
+Скрипт: `scylla-benchmark.ps1`. Параметры: `-Requests 500 -Warmup 20`.
 
+- **Warm-up** (20 запросов) не учитывается — исключает JIT, connection pool, прогрев кэша.
+- **Consistency** берётся из `docker exec library-app printenv SCYLLA_CONSISTENCY` и пишется в CSV.
+- **Метрики**: throughput (успешные / длительность), average latency, p95, availability.
+
+> Важно: эндпоинт `/views` пишет в **CouchDB + Scylla** (`eventRepository.saveWithRevision` + `actionService.log`),
+> поэтому метрики — **end-to-end по приложению**, а не «чистая Scylla». Узкое место — CouchDB и HTTP-слой.
+
+### Результаты
+| Запросов | Throughput, оп/с | Ср. задержка, мс | P95, мс | Доступность, % |
+|---:|---:|---:|---:|---:|
+| 10  | 6,433 | 155,407 | 170,756 | 100 |
+| 100 | 6,355 | 157,340 | 203,603 | 100 |
+| 500 | 6,571 | 152,182 | 186,721 | 100 |
+
+
+### Выводы
+
+- При трёх живых узлах доступность 100% у обоих CL — отказ узла не моделировался (это эксперимент B).
+- **ALL** ожидаемо медленнее **QUORUM** по throughput: координатор ждёт 3 подтверждения вместо 2.
+- Метрики **end-to-end** (HTTP + CouchDB + Scylla), поэтому абсолютные значения throughput ниже, чем у чистой Scylla; для сравнения CL важна **относительная** разница.
+- P95 на 500 запросах стабилен; на 100 — шумный (учтено warm-up и объёмом).
